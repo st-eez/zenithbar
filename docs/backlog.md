@@ -1,7 +1,5 @@
 # Backlog
 
-- Run `zenith-probe watch` and `zenith-probe clicks` with Steve, and record them in
-  [overview.md](overview.md).
 - Find what WindowServer spends on an update, and whether moving fewer layers cuts it.
 - Decide the bar's architecture from the probes: windows, layers, Spaces, level, input.
 - Steve to say which Noctalia look he meant by "envelope": the inset tab with flared corners

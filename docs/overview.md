@@ -56,14 +56,22 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   flares included, and left them sharp in the carved flares and corners. Noctalia's shapes
   need nothing private.
 
+- **Clicks** (`zenith-probe clicks`): on a nonactivating panel at the status level, clicks on
+  an item and on the fill reached the bar, and clicks in the carved flare and corner, where
+  the window is clear, reached the probe's window behind it. No click activated the probe or
+  made its panel key. A click on the window behind raised it over the bar, both at one level
+  in one app, the reordering behind SketchyBar's blank bar (#850), so a bar keeps one window
+  per display and gives its popups a level of their own.
+- **Spaces** (`zenith-probe watch`, Steve driving, three displays): a panel at
+  kCGBackstopMenuLevel, -20, with `.canJoinAllSpaces` and `.stationary`, stayed on screen
+  through Kosmos workspace switches on two displays, Mission Control, the lock screen and back,
+  and native fullscreen. In fullscreen it joined the fullscreen Space without
+  `.fullScreenAuxiliary`, and the app covered it, as SketchyBar's bar hides there by default.
+  The revealed menu bar slid over it. The window list showed MenuBarAgent's windows off screen
+  even while the menu bar showed, so a bar learns of the reveal some other way, if it needs
+  to. AppKit's Space behaviours do what SketchyBar's private Space does.
+
 ## 3. Open questions
 
-Each names the probe that settles it.
-
-- Whether a panel joined to every Space stays on screen through Kosmos's workspace switches
-  and slides, Mission Control, a native fullscreen Space and the menu bar's reveal, and where
-  MenuBarAgent's window sits then (`zenith-probe watch`, which Steve drives).
-- Whether clicks on a bar's clear areas reach the window behind it, and whether a click
-  activates Zenith or reorders its windows (`zenith-probe clicks`, which moves the pointer).
 - Why WindowServer spends two to four times the bar's own time on an update, and whether
   updating only the changed item, as right-aligned items that do not move, cuts it.
