@@ -5,15 +5,12 @@ import AppKit
 setvbuf(stdout, nil, _IOLBF, 0)
 
 let commands: [(name: String, usage: String, run: @MainActor ([String]) -> Void)] = [
-    ("cost", "cost [updates] [text|image|sketchybar...]", { arguments in
+    ("cost", "cost [updates] [text|image|still|windows|sketchybar...]", { arguments in
         let count = arguments.first.flatMap(Int.init)
         cost(updates: count ?? 300, modes: Array(arguments.dropFirst(count == nil ? 0 : 1)))
     }),
     ("shape", "shape [visual|masked|skylight|tint...]", { shape($0) }),
-    ("watch", "watch [seconds] [fullscreen] [level=<n>]", { arguments in
-        watch(seconds: arguments.first.flatMap(Double.init) ?? 120, fullscreen: arguments.contains("fullscreen"),
-              level: arguments.first { $0.hasPrefix("level=") }.flatMap { Int($0.dropFirst(6)) })
-    }),
+    ("watch", "watch [seconds]", { watch(seconds: $0.first.flatMap(Double.init) ?? 120) }),
     ("clicks", "clicks", { _ in clicks() }),
 ]
 

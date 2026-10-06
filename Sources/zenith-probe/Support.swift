@@ -15,15 +15,12 @@ extension NSScreen {
 
 /// The outline of a bar hanging from its top edge: its top corners flare out by `flare` into
 /// that edge, as Noctalia draws `concave_edge_corners`, and its bottom corners round by
-/// `radius`. It spans `width + 2 * flare`, with the origin at the bottom left; flare 0 draws a
-/// plain strip with rounded bottom corners.
+/// `radius`. It spans `width + 2 * flare`, with the origin at the bottom left.
 func tabPath(width: CGFloat, height: CGFloat, flare: CGFloat, radius: CGFloat) -> CGPath {
     let path = CGMutablePath(), right = flare + width
     path.move(to: CGPoint(x: 0, y: height))
-    if flare > 0 {
-        path.addArc(center: CGPoint(x: 0, y: height - flare), radius: flare, startAngle: .pi / 2, endAngle: 0,
-                    clockwise: true)
-    }
+    path.addArc(center: CGPoint(x: 0, y: height - flare), radius: flare, startAngle: .pi / 2, endAngle: 0,
+                clockwise: true)
     path.addLine(to: CGPoint(x: flare, y: radius))
     path.addArc(center: CGPoint(x: flare + radius, y: radius), radius: radius, startAngle: .pi, endAngle: 1.5 * .pi,
                 clockwise: false)
@@ -31,10 +28,8 @@ func tabPath(width: CGFloat, height: CGFloat, flare: CGFloat, radius: CGFloat) -
     path.addArc(center: CGPoint(x: right - radius, y: radius), radius: radius, startAngle: 1.5 * .pi,
                 endAngle: 2 * .pi, clockwise: false)
     path.addLine(to: CGPoint(x: right, y: height - flare))
-    if flare > 0 {
-        path.addArc(center: CGPoint(x: right + flare, y: height - flare), radius: flare, startAngle: .pi,
-                    endAngle: .pi / 2, clockwise: true)
-    }
+    path.addArc(center: CGPoint(x: right + flare, y: height - flare), radius: flare, startAngle: .pi,
+                endAngle: .pi / 2, clockwise: true)
     path.closeSubpath()
     return path
 }
@@ -81,11 +76,6 @@ func spaces(of window: UInt32) -> [UInt64] {
 func onScreenOrder() -> [UInt32] {
     ((CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]]) ?? [])
         .compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value }
-}
-
-/// AppKit's rectangle for a frame with the origin at the top left of the main display.
-@MainActor func appKitRect(_ frame: CGRect) -> NSRect {
-    NSRect(x: frame.minX, y: NSScreen.screens[0].frame.height - frame.maxY, width: frame.width, height: frame.height)
 }
 
 /// CoreGraphics' point for `point` in the coordinates of `window`'s content, origin bottom left.
@@ -170,11 +160,10 @@ struct Capture {
     }
 }
 
-/// A vertical black and white stripe every `stripe` points, for blur to smear.
+/// A vertical black and white stripe every 2 points, for blur to smear.
 final class StripesView: NSView {
-    var stripe: CGFloat = 2
-
     override func draw(_ dirtyRect: NSRect) {
+        let stripe: CGFloat = 2
         NSColor.white.setFill()
         bounds.fill()
         NSColor.black.setFill()

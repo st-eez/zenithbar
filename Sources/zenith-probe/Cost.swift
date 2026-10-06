@@ -1,15 +1,18 @@
 // What an update of the bar costs the bar's process and WindowServer (docs/overview.md).
 //
-//   zenith-probe cost [updates] [text|image|sketchybar...]
+//   zenith-probe cost [updates] [text|image|still|windows|sketchybar...]
 //       A 14 item probe bar along the top of the built-in display, 20 updates a second, each
-//       changing one item's text to another width and moving the items after it, against an
-//       idle stretch as long. Reports CPU per update of the probe and of WindowServer, and the
+//       changing one item's text to another width and moving the items after it, in seconds
+//       alternating with idle ones. Reports CPU per update of the probe and of WindowServer, and the
 //       probe's main thread time per update.
 //       text        each item a CATextLayer, measured with NSAttributedString
 //       image       each item's text laid out with CoreText and drawn into its layer's contents
+//       still       as text, but the last item changes, so no other item moves
+//       windows     as text, but each item in a window of its own, as SketchyBar draws them
 //       sketchybar  the same updates to an item added to the running SketchyBar through its CLI,
 //                   on the built-in display, against SketchyBar's CPU; the item is removed after
-//       Default: 300 updates, text then image. Takes about updates / 10 s a mode.
+//       Default: 300 updates, text then image. Takes about updates / 10 s a mode, longer with
+//       sketchybar, whose CLI holds the rate near 10 a second.
 import AppKit
 import CoreText
 
@@ -20,13 +23,15 @@ private let words = ["1", "1 ab", "1 abcdef"]
     let panel: BarPanel
     let image: Bool
     var items: [CALayer] = []
+    /// Each item's own window, when items have them.
+    var windows: [BarPanel] = []
     var widths: [CGFloat] = []
     let font = NSFont.monospacedSystemFont(ofSize: 13, weight: .medium)
     let scale: CGFloat
     /// ms spent setting text, laying out, and committing, over every update.
     var phases = [0.0, 0.0, 0.0]
 
-    init(on screen: NSScreen, image: Bool) {
+    init(on screen: NSScreen, image: Bool, windowed: Bool) {
         self.image = image
         scale = screen.backingScaleFactor
         let frame = NSRect(x: screen.frame.minX, y: screen.frame.maxY - barHeight, width: screen.frame.width,
@@ -40,13 +45,22 @@ private let words = ["1", "1 ab", "1 abcdef"]
             item.backgroundColor = NSColor(white: 1, alpha: 0.12).cgColor
             item.cornerRadius = 6
             item.contentsScale = scale
-            view.layer?.addSublayer(item)
+            if windowed {
+                let window = BarPanel(frame: NSRect(x: frame.minX, y: frame.minY + 3, width: 10, height: barHeight - 6),
+                                      level: .statusBar, behavior: [.canJoinAllSpaces, .stationary])
+                window.contentView = layerView(NSRect(x: 0, y: 0, width: 10, height: barHeight - 6))
+                window.contentView?.layer?.addSublayer(item)
+                windows.append(window)
+            } else {
+                view.layer?.addSublayer(item)
+            }
             items.append(item)
             widths.append(0)
             set(index, "item \(index)")
         }
         layout(from: 0)
         panel.orderFrontRegardless()
+        for window in windows { window.orderFrontRegardless() }
     }
 
     /// Gives item `index` its text and width, and moves the items after it.
@@ -89,49 +103,74 @@ private let words = ["1", "1 ab", "1 abcdef"]
     private func layout(from index: Int) {
         var x = 20 + widths[..<index].reduce(0) { $0 + $1 + spacing }
         for item in index..<items.count {
-            items[item].frame = CGRect(x: x, y: 3, width: widths[item], height: barHeight - 6)
+            if windows.isEmpty {
+                items[item].frame = CGRect(x: x, y: 3, width: widths[item], height: barHeight - 6)
+            } else {
+                windows[item].setFrame(NSRect(x: panel.frame.minX + x, y: panel.frame.minY + 3, width: widths[item],
+                                              height: barHeight - 6), display: false)
+                items[item].frame = CGRect(x: 0, y: 0, width: widths[item], height: barHeight - 6)
+            }
             x += widths[item] + spacing
         }
     }
 }
 
-/// CPU in ms of the probe, WindowServer and an optional third process over `seconds` of the
-/// event loop while `tick` runs `rate` times a second, or idle when `tick` is nil.
-@MainActor private func measure(_ seconds: Double, other: pid_t?, tick: (@MainActor () -> Void)?)
-    -> (probe: Double, server: Double, other: Double?)
+private struct Sample { var probe = 0.0, server = 0.0, other = 0.0 }
+
+/// CPU in ms of the probe, WindowServer and an optional third process, idle and busy, each
+/// summed over `seconds` alternations of an idle second and a second while `tick` runs `rate`
+/// times a second. WindowServer's own load drifted by a third between 15 s stretches, which
+/// alternating cancels (docs/overview.md).
+@MainActor private func measure(_ seconds: Double, other: pid_t?, tick: @escaping @MainActor () -> Void)
+    -> (idle: Sample, busy: Sample)
 {
     let server = pid(of: "WindowServer")!
-    let probe0 = rusageCPU(getpid())!, server0 = psCPU(server)!, other0 = other.flatMap(rusageCPU)
-    var timer: Timer?
-    if let tick {
-        timer = Timer(timeInterval: 1 / rate, repeats: true) { _ in MainActor.assumeIsolated { tick() } }
-        RunLoop.main.add(timer!, forMode: .common)
+    let read = { Sample(probe: rusageCPU(getpid())!, server: psCPU(server)!, other: other.flatMap(rusageCPU) ?? 0) }
+    var idle = Sample(), busy = Sample()
+    for _ in 0..<Int(seconds) {
+        for active in [false, true] {
+            let start = read()
+            var timer: Timer?
+            if active {
+                timer = Timer(timeInterval: 1 / rate, repeats: true) { _ in MainActor.assumeIsolated { tick() } }
+                RunLoop.main.add(timer!, forMode: .common)
+            }
+            pumpEvents(1)
+            timer?.invalidate()
+            let end = read()
+            let delta = Sample(probe: end.probe - start.probe, server: end.server - start.server,
+                               other: end.other - start.other)
+            if active {
+                busy = Sample(probe: busy.probe + delta.probe, server: busy.server + delta.server,
+                              other: busy.other + delta.other)
+            } else {
+                idle = Sample(probe: idle.probe + delta.probe, server: idle.server + delta.server,
+                              other: idle.other + delta.other)
+            }
+        }
     }
-    pumpEvents(seconds)
-    timer?.invalidate()
-    let otherCPU = other.flatMap(rusageCPU).flatMap { now in other0.map { now - $0 } }
-    return (rusageCPU(getpid())! - probe0, psCPU(server)! - server0, otherCPU)
+    return (idle, busy)
 }
 
 @MainActor func cost(updates: Int, modes: [String]) -> Never {
     NSApplication.shared.setActivationPolicy(.accessory)
     let screen = builtInScreen(), seconds = Double(updates) / rate
-    print("\(updates) updates at \(Int(rate)) a second; CPU per update is the busy stretch less an idle one as long")
+    print("\(updates) updates at \(Int(rate)) a second; CPU per update is the busy seconds less the idle ones between them")
     for mode in modes.isEmpty ? ["text", "image"] : modes {
         if mode == "sketchybar" {
             sketchyBar(updates: updates, seconds: seconds, on: screen)
             continue
         }
-        guard mode == "text" || mode == "image" else {
+        guard ["text", "image", "still", "windows"].contains(mode) else {
             print("unknown mode \(mode)")
             exit(2)
         }
-        let strip = Strip(on: screen, image: mode == "image")
+        let strip = Strip(on: screen, image: mode == "image", windowed: mode == "windows")
+        let changing = mode == "still" ? strip.items.count - 1 : 1
         pumpEvents(0.5)
-        let idle = measure(seconds, other: nil, tick: nil)
         var count = 0, mainThread = 0.0
-        let busy = measure(seconds, other: nil) {
-            mainThread += ms(ContinuousClock().measure { strip.update(1, words[count % words.count]) })
+        let (idle, busy) = measure(seconds, other: nil) {
+            mainThread += ms(ContinuousClock().measure { strip.update(changing, words[count % words.count]) })
             count += 1
         }
         let n = Double(count)
@@ -142,6 +181,7 @@ private let words = ["1", "1 ab", "1 abcdef"]
         print(String(format: "  phases per update: text %.3f ms, layout %.3f ms, commit %.3f ms",
                      strip.phases[0] / n, strip.phases[1] / n, strip.phases[2] / n))
         strip.panel.orderOut(nil)
+        for window in strip.windows { window.orderOut(nil) }
     }
     exit(0)
 }
@@ -163,9 +203,8 @@ private let words = ["1", "1 ab", "1 abcdef"]
     }
     run(cli, ["--add", "item", "zenith_probe", "right", "--set", "zenith_probe", "display=\(arrangement)", "label=1"])
     pumpEvents(0.5)
-    let idle = measure(seconds, other: daemon, tick: nil)
     var count = 0
-    let busy = measure(seconds, other: daemon) {
+    let (idle, busy) = measure(seconds, other: daemon) {
         run(cli, ["--set", "zenith_probe", "label=\(words[count % words.count])"])
         count += 1
     }
@@ -173,8 +212,7 @@ private let words = ["1", "1 ab", "1 abcdef"]
     let n = Double(count)
     print(String(format: "sketchybar: %d updates, SketchyBar %.3f ms/update, WindowServer %.2f ms/update"
         + " (idle: SketchyBar %.0f ms, WindowServer %.0f ms over %.0f s), SketchyBar footprint %.1f MB",
-        count, ((busy.other ?? 0) - (idle.other ?? 0)) / n, (busy.server - idle.server) / n,
-        idle.other ?? 0, idle.server, seconds, footprint(daemon) ?? 0))
+        count, (busy.other - idle.other) / n, (busy.server - idle.server) / n, idle.other, idle.server, seconds, footprint(daemon) ?? 0))
 }
 
 private func ms(_ duration: Duration) -> Double {

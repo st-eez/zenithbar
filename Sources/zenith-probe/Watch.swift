@@ -1,21 +1,19 @@
 // Where a bar window joined to every Space shows (docs/overview.md).
 //
-//   zenith-probe watch [seconds] [fullscreen] [level=<n>]
+//   zenith-probe watch [seconds]
 //       A probe bar along the top of every display, joined to every Space, at SketchyBar's
-//       level kCGBackstopMenuLevel unless level= gives another. Every 100 ms reads whether
+//       level kCGBackstopMenuLevel. Every 100 ms reads whether
 //       WindowServer has each bar on screen and in which Spaces, the active Space, the front
-//       app, and MenuBarAgent's windows, and logs each change. With `fullscreen` the bars may
-//       join native fullscreen Spaces too (.fullScreenAuxiliary). Switch workspaces, open
+//       app, and MenuBarAgent's windows, and logs each change. Switch workspaces, open
 //       Mission Control, enter native fullscreen and reveal the hidden menu bar while it runs.
 //       Default: 120 s.
 import AppKit
 import CZenith
 
-@MainActor func watch(seconds: Double, fullscreen: Bool, level: Int?) -> Never {
+@MainActor func watch(seconds: Double) -> Never {
     NSApplication.shared.setActivationPolicy(.accessory)
-    var behavior: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
-    if fullscreen { behavior.insert(.fullScreenAuxiliary) }
-    let windowLevel = NSWindow.Level(rawValue: level ?? Int(CGWindowLevelForKey(.backstopMenu)))
+    let behavior: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+    let windowLevel = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.backstopMenu)))
     let bars = NSScreen.screens.map { screen -> (String, BarPanel) in
         let frame = NSRect(x: screen.frame.minX, y: screen.frame.maxY - 28, width: screen.frame.width, height: 28)
         let bar = BarPanel(frame: frame, level: windowLevel, behavior: behavior)

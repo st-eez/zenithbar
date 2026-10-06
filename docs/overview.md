@@ -36,26 +36,30 @@ Zenith keeps SketchyBar's names for things where they fit, and nothing of its sc
 On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's runs.
 
 - **An update's cost** (`zenith-probe cost`): one item's text changing width and the 12 items
-  after it moving, in one AppKit panel with a layer per item, 300 updates at 20 a second.
+  after it moving, 300 updates at 20 a second, in seconds alternating with idle ones, since
+  WindowServer's own load drifted by a third between 15 s stretches. Ranges span the runs.
   | | Bar process per update | WindowServer per update | Footprint |
   |---|---|---|---|
-  | CATextLayer items | 0.80 ms | 1.5 to 2.3 ms | 10.6 MB |
-  | CoreText drawn into each item's contents | 0.78 to 0.89 ms | 2.8 ms | 12.1 MB |
-  | SketchyBar, the same updates to an item through its CLI | 3.55 ms | 18.4 ms | 43.7 MB |
+  | One panel, a CATextLayer per item | 0.69 to 0.80 ms | 1.0 to 2.8 ms | 10.6 to 10.9 MB |
+  | One panel, CoreText drawn into each item's contents | 0.78 to 0.89 ms | 2.8 ms | 12.1 MB |
+  | A panel per item, as SketchyBar draws them | 5.5 to 7.1 ms | 7.0 to 8.2 ms | |
+  | SketchyBar, the same updates to an item through its CLI | 3.4 to 3.6 ms | 11.3 to 18.4 ms | 43.5 to 43.7 MB |
 
-  Of the panel's main thread time, about 0.69 ms an update, the Core Animation commit took
-  0.43 to 0.47 ms, setting the text 0.18 ms (CATextLayer) or 0.32 ms (CoreText), and the
-  layout code 0.02 to 0.03 ms. The Swift of the bar's own code is about 4% of its time, so a
-  bar in C or Rust would make the same framework calls at the same cost. WindowServer idled
-  at about 200 ms a second during the runs, so its figures carry that noise. SketchyBar's
-  figures include parsing each CLI message, and its CLI held the rate to 10 a second.
+  Of the one panel's main thread time, about 0.6 to 0.7 ms an update, the Core Animation
+  commit took 0.4 to 0.47 ms, setting the text 0.15 to 0.18 ms (CATextLayer) or 0.32 ms
+  (CoreText), and the layout code 0.02 to 0.03 ms. The Swift of the bar's own code is about
+  4% of its time, so a bar in C or Rust would make the same framework calls at the same cost.
+  A panel per item spent 1.1 ms setting the panels' frames and twice as long committing.
+  SketchyBar's figures include parsing each CLI message, and its CLI held the rate to 10 a
+  second. Changing the last item, so no other moves, did not read lower than changing the
+  second: WindowServer's noise, about ±1 ms an update read through `ps`, hides the
+  difference.
 - **Blur inside a bar's outline** (`zenith-probe shape`): a tab with 32 pt flares and 20 pt
   bottom corners over stripes. NSVisualEffectView with the outline as its `maskImage`, the
   same view with the outline as its layer's mask, and a translucent fill with
   `SLSSetWindowBackgroundBlurRadius` each blurred the stripes fully inside the outline,
   flares included, and left them sharp in the carved flares and corners. Noctalia's shapes
   need nothing private.
-
 - **Clicks** (`zenith-probe clicks`): on a nonactivating panel at the status level, clicks on
   an item and on the fill reached the bar, and clicks in the carved flare and corner, where
   the window is clear, reached the probe's window behind it. No click activated the probe or
@@ -73,5 +77,6 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
 
 ## 3. Open questions
 
-- Why WindowServer spends two to four times the bar's own time on an update, and whether
-  updating only the changed item, as right-aligned items that do not move, cuts it.
+- What WindowServer spends on an update of one panel, and whether keeping items from moving
+  cuts it, which needs a quieter WindowServer than Steve's three displays in use give, or a
+  reading finer than `ps`.
