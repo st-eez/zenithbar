@@ -2,9 +2,8 @@
 
 - Find what WindowServer spends on an update of one panel, and whether keeping items from
   moving cuts it: `zenith-probe cost text still` with the Mac otherwise idle.
-- Install: Kosmos's branch `zenithpush` pushes snapshots to Zenith; it needs merging and
-  installing, which restarts Kosmos. Then a LaunchAgent with KeepAlive for Zenith, and
-  SketchyBar's stopped.
+- Install Zenith: a LaunchAgent with KeepAlive, and SketchyBar's launch agent stopped, once
+  Steve retires SketchyBar.
 - The agents item and popup, as Zenith's first plugin.
 - The calendar's double click between a filled and a transparent bar, with text colored
   from the wallpaper under it.
