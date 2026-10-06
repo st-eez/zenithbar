@@ -138,18 +138,16 @@ import ZenithCore
             case .hidden: hovered == key ? theme.foreground : theme.dim
             }
             var text = NSAttributedString(
-                string: pill.name, attributes: [.font: font(14, bold: pill.emphasis == .focused), .foregroundColor: color.nsColor,
-                                                .baselineOffset: 1])
+                string: pill.name, attributes: [.font: font(14, bold: pill.emphasis == .focused), .foregroundColor: color.nsColor])
             if !pill.glyphs.isEmpty {
                 text = joined(text, NSAttributedString(string: pill.glyphs, attributes: [
                     .font: NSFont(name: "sketchybar-app-font", size: 14) ?? font(14), .foregroundColor: color.nsColor,
-                ]), gap: 8)
+                ]), gap: 8, centered: true)
             }
             return (key, Item(content: .text(text)))
         }
         if let app = row.frontApp {
-            let text = NSAttributedString(string: app, attributes: [.font: font(13), .foregroundColor: theme.foreground.nsColor,
-                                                                    .baselineOffset: 1])
+            let text = NSAttributedString(string: app, attributes: [.font: font(13), .foregroundColor: theme.foreground.nsColor])
             items.append(("front", Item(content: .text(text))))
         }
         return items
@@ -171,18 +169,24 @@ import ZenithCore
         let glyph = NSAttributedString(string: speaker.glyph, attributes: [
             .font: NSFont.systemFont(ofSize: 16), .foregroundColor: (speaker.dim ? theme.dim : theme.foreground).nsColor,
         ])
-        items.append(("volume", Item(content: .text(glyph))))
+        items.append(("volume", Item(content: .text(glyph), center: .ink)))
         return items
     }
 
     /// `first` then `second` with `gap` points between their ink, kerning away the blank the
-    /// fonts leave after the one and before the other.
-    private func joined(_ first: NSAttributedString, _ second: NSAttributedString, gap: CGFloat) -> NSAttributedString {
-        let after = first.size().width - (Item(content: .text(first)).ink.upperBound)
-        let before = Item(content: .text(second)).ink.lowerBound
+    /// fonts leave after the one and before the other. `centered` raises or lowers `second`'s
+    /// ink to center on `first`'s figures, as a pill's app glyphs on its number.
+    private func joined(_ first: NSAttributedString, _ second: NSAttributedString, gap: CGFloat,
+                        centered: Bool = false) -> NSAttributedString {
+        let after = first.size().width - inkBounds(first).maxX
         let text = NSMutableAttributedString(attributedString: first)
-        text.addAttribute(.kern, value: gap - after - before, range: NSRange(location: text.length - 1, length: 1))
-        text.append(second)
+        text.addAttribute(.kern, value: gap - after - inkBounds(second).minX, range: NSRange(location: text.length - 1, length: 1))
+        let tail = NSMutableAttributedString(attributedString: second)
+        if centered, let font = first.attribute(.font, at: 0, effectiveRange: nil) as? NSFont {
+            tail.addAttribute(.baselineOffset, value: font.capHeight / 2 - inkBounds(second).midY,
+                              range: NSRange(location: 0, length: tail.length))
+        }
+        text.append(tail)
         return text
     }
 

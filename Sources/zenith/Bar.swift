@@ -7,18 +7,29 @@ import ZenithCore
 struct Item: Equatable {
     enum Content: Equatable {
         case text(NSAttributedString)
-        /// Drawn at `size` points, its ink between `ink`'s bounds.
+        /// Drawn at `size` points, centered, its ink between `ink`'s bounds.
         case image(CGImage, size: CGSize, ink: ClosedRange<CGFloat>)
     }
 
+    /// What a text item centers on the bar's middle line.
+    enum Center: Equatable {
+        /// The height of its first font's capitals and figures, so items' baselines agree and
+        /// a descender, as in "Ghostty", moves nothing, as Omarchy's shell centers labels.
+        case figures
+        /// Its glyphs' ink, for an icon.
+        case ink
+    }
+
     var content: Content
-    /// Up from centered.
-    var lift: CGFloat = 0
+    var center = Center.figures
+
+    /// Blank above and below text in its bitmap, for glyphs raised or lowered to line up.
+    static let pad: CGFloat = 3
 
     /// The drawing's size in points.
     var size: CGSize {
         switch content {
-        case let .text(text): CGSize(width: ceil(text.size().width), height: ceil(text.size().height))
+        case let .text(text): CGSize(width: ceil(text.size().width), height: ceil(text.size().height) + 2 * Self.pad)
         case let .image(_, size, _): size
         }
     }
@@ -27,12 +38,33 @@ struct Item: Equatable {
     var ink: ClosedRange<CGFloat> {
         switch content {
         case let .text(text):
-            let bounds = text.boundingRect(with: CGSize(width: 1e5, height: 1e5),
-                                           options: [.usesLineFragmentOrigin, .usesDeviceMetrics])
+            let bounds = inkBounds(text)
             return bounds.minX...bounds.maxX
         case let .image(_, _, ink): return ink
         }
     }
+
+    /// The drawing's bottom edge on a bar `height` tall, from the bar's bottom.
+    func bottom(height: CGFloat) -> CGFloat {
+        guard case let .text(text) = content else { return (height - size.height) / 2 }
+        let middle = switch center {
+        case .figures: ((text.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.capHeight ?? 0) / 2
+        case .ink: inkBounds(text).midY
+        }
+        // AppKit puts the baseline the line's descent above where it draws.
+        return height / 2 - middle - Self.pad - descent(text)
+    }
+}
+
+/// The ink of `text`'s glyphs, from its origin with y up from its baseline.
+func inkBounds(_ text: NSAttributedString) -> CGRect {
+    CTLineGetBoundsWithOptions(CTLineCreateWithAttributedString(text), .useGlyphPathBounds)
+}
+
+private func descent(_ text: NSAttributedString) -> CGFloat {
+    var descent: CGFloat = 0
+    CTLineGetTypographicBounds(CTLineCreateWithAttributedString(text), nil, &descent, nil)
+    return descent
 }
 
 /// A borderless panel that never takes key or activates Zenith (docs/overview.md, clicks).
@@ -146,7 +178,7 @@ final class BarPanel: NSPanel {
         context.scaleBy(x: scale, y: scale)
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
-        text.draw(at: .zero)
+        text.draw(at: CGPoint(x: 0, y: Item.pad))
         NSGraphicsContext.restoreGraphicsState()
         return context.makeImage()
     }
@@ -168,7 +200,7 @@ final class BarPanel: NSPanel {
             // On the pixel grid, as a bitmap moved by part of a pixel draws its text blurred.
             let scale = panel.backingScaleFactor
             layers[key]?.frame = CGRect(x: ((x - ink.lowerBound) * scale).rounded() / scale,
-                                        y: ((Self.height - size.height) / 2 + item.lift).rounded(),
+                                        y: (item.bottom(height: Self.height) * scale).rounded() / scale,
                                         width: size.width, height: size.height)
         }
     }
