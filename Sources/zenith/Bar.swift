@@ -1,24 +1,36 @@
 import AppKit
 import ZenithCore
 
-/// What an item draws, between its padding.
+/// What an item draws. Items are laid out by their ink, the part of the drawing that shows,
+/// so every gap is the same whatever side bearings a font gives its glyphs: the app glyphs
+/// of sketchybar-app-font carry several points of blank on their right (docs/overview.md).
 struct Item: Equatable {
     enum Content: Equatable {
         case text(NSAttributedString)
-        /// Drawn at `size` points, centered in the item.
-        case image(CGImage, size: CGSize)
+        /// Drawn at `size` points, its ink between `ink`'s bounds.
+        case image(CGImage, size: CGSize, ink: ClosedRange<CGFloat>)
     }
 
     var content: Content
-    var leading: CGFloat = 0
-    var trailing: CGFloat = 0
     /// Up from centered.
     var lift: CGFloat = 0
 
-    var width: CGFloat {
+    /// The drawing's size in points.
+    var size: CGSize {
         switch content {
-        case let .text(text): leading + ceil(text.size().width) + trailing
-        case let .image(_, size): leading + size.width + trailing
+        case let .text(text): CGSize(width: ceil(text.size().width), height: ceil(text.size().height))
+        case let .image(_, size, _): size
+        }
+    }
+
+    /// Where the drawing's ink starts and ends, from its left edge.
+    var ink: ClosedRange<CGFloat> {
+        switch content {
+        case let .text(text):
+            let bounds = text.boundingRect(with: CGSize(width: 1e5, height: 1e5),
+                                           options: [.usesLineFragmentOrigin, .usesDeviceMetrics])
+            return bounds.minX...bounds.maxX
+        case let .image(_, _, ink): return ink
         }
     }
 }
@@ -99,7 +111,7 @@ final class BarPanel: NSPanel {
         let old = Dictionary(self.left + self.right, uniquingKeysWith: { first, _ in first })
         moved = moved || left.map(\.key) != self.left.map(\.key) || right.map(\.key) != self.right.map(\.key)
         for (key, item) in left + right where old[key] != item || layers[key] == nil {
-            moved = moved || old[key]?.width != item.width
+            moved = moved || old[key]?.ink != item.ink
             draw(item, into: layer(key, scale: scale))
         }
         self.left = left
@@ -120,11 +132,8 @@ final class BarPanel: NSPanel {
 
     private func draw(_ item: Item, into layer: CALayer) {
         switch item.content {
-        case let .text(text):
-            let text = text.size()
-            layer.contents = render(item, size: CGSize(width: ceil(text.width), height: ceil(text.height)), scale: layer.contentsScale)
-        case let .image(image, _):
-            layer.contents = image
+        case .text: layer.contents = render(item, size: item.size, scale: layer.contentsScale)
+        case let .image(image, _, _): layer.contents = image
         }
     }
 
@@ -142,18 +151,24 @@ final class BarPanel: NSPanel {
         return context.makeImage()
     }
 
+    /// Between the ink of neighbouring items, the 16 pt Steve's SketchyBar config put between
+    /// workspaces.
+    static let gap = 16.0
+
     private func place() {
-        let edges = layout(left: left.map { Double($0.item.width) }, right: right.map { Double($0.item.width) },
-                           width: Double(panel.frame.width), insets: style.insets)
+        let inks = (left + right).map { $0.item.ink }
+        let starts = layout(left: left.map { Double($0.item.ink.upperBound - $0.item.ink.lowerBound) },
+                            right: right.map { Double($0.item.ink.upperBound - $0.item.ink.lowerBound) },
+                            width: Double(panel.frame.width), insets: style.insets, gap: Self.gap)
         frames = [:]
-        for ((key, item), x) in Array(zip(left, edges.left)) + Array(zip(right, edges.right)) {
-            let frame = CGRect(x: x, y: 0, width: item.width, height: Self.height)
-            frames[key] = frame
-            let size: CGSize = switch item.content {
-            case let .text(text): CGSize(width: ceil(text.size().width), height: ceil(text.size().height))
-            case let .image(_, size): size
-            }
-            layers[key]?.frame = CGRect(x: frame.minX + item.leading, y: ((Self.height - size.height) / 2 + item.lift).rounded(),
+        for (((key, item), ink), x) in zip(zip(left + right, inks), starts.left + starts.right) {
+            let width = ink.upperBound - ink.lowerBound, half = CGFloat(Self.gap / 2)
+            frames[key] = CGRect(x: x - half, y: 0, width: width + 2 * half, height: Self.height)
+            let size = item.size
+            // On the pixel grid, as a bitmap moved by part of a pixel draws its text blurred.
+            let scale = panel.backingScaleFactor
+            layers[key]?.frame = CGRect(x: ((x - ink.lowerBound) * scale).rounded() / scale,
+                                        y: ((Self.height - size.height) / 2 + item.lift).rounded(),
                                         width: size.width, height: size.height)
         }
     }

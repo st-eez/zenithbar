@@ -101,6 +101,13 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
 - **Look:** the fonts, sizes, paddings and colors of Steve's SketchyBar config of
   2026-10-06, and its app glyph map, copied into `AppIcons.swift`. Colors come from
   `~/.config/zenith/theme.json` (`Theme`), Tokyo Night without it.
+- **Spacing:** items are laid out by their ink, the part of each drawing that shows, with
+  16 pt between neighbours, and a pill's number and glyphs, and the calendar's date and
+  time, are kerned to 8 pt of ink apart. Laid out by advance widths, as first built, the
+  gap after a pill ending in an app glyph read 21.5 to 24 pt against 16.5 pt after a bare
+  number, as sketchybar-app-font's glyphs carry several points of blank on their right;
+  SketchyBar's own gaps read 14.5 to 16 pt with Steve's paddings. Measured from screen
+  captures, 2026-10-06; the gaps now read 15.5 to 16 pt, and 7 to 8.5 pt inside pills.
 - **Styles** (`BarStyle`), chosen by `style` in `~/.config/zenith/config.json`: `standard`
   edge to edge; `floating` inset 240 pt from each side with its bottom corners rounded by
   9 pt, Steve's SketchyBar floating style; and `tab`, inset the same with 12 pt bottom

@@ -21,12 +21,13 @@ public enum BarStyle: String, Decodable, Sendable {
     /// Where the top corners meet the screen's edge, the arc they flare out on.
     var flare: Double { self == .tab ? 12 : 0 }
 
-    /// From each end of the display to the first item, left and right.
+    /// From each end of the display to the ink of the first item, left and right: in
+    /// `standard`, where the ink of Steve's SketchyBar items began and ended.
     public var insets: (left: Double, right: Double) {
         switch self {
-        case .standard: (20, 22)
-        case .floating: (margin + 6, margin + 6)
-        case .tab: (margin + 14, margin + 14)
+        case .standard: (21, 23)
+        case .floating: (margin + 7, margin + 7)
+        case .tab: (margin + 15, margin + 15)
         }
     }
 

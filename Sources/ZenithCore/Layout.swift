@@ -1,17 +1,17 @@
-/// Each item's left edge on a bar `width` wide: `left` items from `insets.left` rightward,
-/// `right` items from `insets.right` before the bar's end leftward, the first of them at the
-/// end. Widths include each item's own padding.
-public func layout(left: [Double], right: [Double], width: Double, insets: (left: Double, right: Double))
+/// Where each item's ink starts on a bar `width` wide, given each one's ink width: `left`
+/// items from `insets.left` rightward, `right` items leftward to end `insets.right` before the
+/// bar's end, the first of them at the end, with `gap` between neighbours.
+public func layout(left: [Double], right: [Double], width: Double, insets: (left: Double, right: Double), gap: Double)
     -> (left: [Double], right: [Double])
 {
     var x = insets.left
     let lefts = left.map { item in
-        defer { x += item }
+        defer { x += item + gap }
         return x
     }
-    x = width - insets.right
+    x = width - insets.right + gap
     let rights = right.map { item in
-        x -= item
+        x -= item + gap
         return x
     }
     return (lefts, rights)

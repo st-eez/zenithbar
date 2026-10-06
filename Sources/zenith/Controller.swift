@@ -127,8 +127,7 @@ import ZenithCore
         }
     }
 
-    // The fonts, sizes and paddings of Steve's SketchyBar config, which compensate for
-    // JetBrains Mono's side bearings so gaps look even.
+    // The fonts and sizes of Steve's SketchyBar config.
 
     private func leftItems(_ row: WorkspaceRow?) -> [(key: String, item: Item)] {
         guard let row else { return [] }
@@ -138,22 +137,20 @@ import ZenithCore
             case .focused, .shown: theme.selected
             case .hidden: hovered == key ? theme.foreground : theme.dim
             }
-            let text = NSMutableAttributedString(
+            var text = NSAttributedString(
                 string: pill.name, attributes: [.font: font(14, bold: pill.emphasis == .focused), .foregroundColor: color.nsColor,
                                                 .baselineOffset: 1])
             if !pill.glyphs.isEmpty {
-                // 8 pt from the number to the glyphs.
-                text.addAttribute(.kern, value: 8, range: NSRange(location: text.length - 1, length: 1))
-                text.append(NSAttributedString(string: pill.glyphs, attributes: [
+                text = joined(text, NSAttributedString(string: pill.glyphs, attributes: [
                     .font: NSFont(name: "sketchybar-app-font", size: 14) ?? font(14), .foregroundColor: color.nsColor,
-                ]))
+                ]), gap: 8)
             }
-            return (key, Item(content: .text(text), trailing: 14))
+            return (key, Item(content: .text(text)))
         }
         if let app = row.frontApp {
             let text = NSAttributedString(string: app, attributes: [.font: font(13), .foregroundColor: theme.foreground.nsColor,
                                                                     .baselineOffset: 1])
-            items.append(("front", Item(content: .text(text), trailing: 16)))
+            items.append(("front", Item(content: .text(text))))
         }
         return items
     }
@@ -163,21 +160,30 @@ import ZenithCore
         var items: [(key: String, item: Item)] = []
         let (date, time) = clockText(Date())
         let bold = [NSAttributedString.Key.font: font(13, bold: true), .foregroundColor: theme.foreground.nsColor]
-        let calendar = NSMutableAttributedString(string: date, attributes: bold)
-        calendar.addAttribute(.kern, value: 8, range: NSRange(location: calendar.length - 1, length: 1))
-        calendar.append(NSAttributedString(string: time, attributes: bold))
-        items.append(("calendar", Item(content: .text(calendar), leading: 4)))
-        if let battery, let (image, size) = battery.image(foreground: theme.foreground.nsColor,
-                                                          background: theme.background.nsColor, scale: scale) {
-            items.append(("battery", Item(content: .image(image, size: size), leading: (40 - size.width) / 2,
-                                          trailing: (40 - size.width) / 2)))
+        let calendar = joined(NSAttributedString(string: date, attributes: bold),
+                              NSAttributedString(string: time, attributes: bold), gap: 8)
+        items.append(("calendar", Item(content: .text(calendar))))
+        if let battery, let (image, size, ink) = battery.image(foreground: theme.foreground.nsColor,
+                                                               background: theme.background.nsColor, scale: scale) {
+            items.append(("battery", Item(content: .image(image, size: size, ink: ink))))
         }
         let speaker = volumeGlyph(volume.level, muted: volume.muted)
         let glyph = NSAttributedString(string: speaker.glyph, attributes: [
             .font: NSFont.systemFont(ofSize: 16), .foregroundColor: (speaker.dim ? theme.dim : theme.foreground).nsColor,
         ])
-        items.append(("volume", Item(content: .text(glyph), leading: 6, trailing: 9)))
+        items.append(("volume", Item(content: .text(glyph))))
         return items
+    }
+
+    /// `first` then `second` with `gap` points between their ink, kerning away the blank the
+    /// fonts leave after the one and before the other.
+    private func joined(_ first: NSAttributedString, _ second: NSAttributedString, gap: CGFloat) -> NSAttributedString {
+        let after = first.size().width - (Item(content: .text(first)).ink.upperBound)
+        let before = Item(content: .text(second)).ink.lowerBound
+        let text = NSMutableAttributedString(attributedString: first)
+        text.addAttribute(.kern, value: gap - after - before, range: NSRange(location: text.length - 1, length: 1))
+        text.append(second)
+        return text
     }
 
     private func font(_ size: CGFloat, bold: Bool = false) -> NSFont {

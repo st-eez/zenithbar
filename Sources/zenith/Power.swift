@@ -32,7 +32,8 @@ struct Battery: Equatable {
     /// The battery image of Steve's SketchyBar helper, ported: a filled body with the percent
     /// inside it, light over the empty part and dark over the filled one, and a bolt on AC.
     /// Its 51 by 20 unit canvas showed at 0.85 pt a unit there.
-    func image(foreground: NSColor, background: NSColor, scale: CGFloat) -> (CGImage, CGSize)? {
+    /// The image, its size, and where its ink, the body to the end of its nub, runs.
+    func image(foreground: NSColor, background: NSColor, scale: CGFloat) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {
         let unit: CGFloat = 0.85, size = CGSize(width: 51 * unit, height: 20 * unit)
         guard let context = CGContext(data: nil, width: Int(size.width * scale), height: Int(size.height * scale),
                                       bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
@@ -72,7 +73,8 @@ struct Battery: Equatable {
             background.setFill()
             bolt.fill()
         }
-        return context.makeImage().map { ($0, size) }
+        // The body starts at 1 unit and the nub ends at 31, after the 9.5 unit shift.
+        return context.makeImage().map { ($0, size, 10.5 * unit...40.5 * unit) }
     }
 }
 

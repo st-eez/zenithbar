@@ -50,9 +50,9 @@ import Testing
 }
 
 @Test func layoutPlacesBothEnds() {
-    let edges = layout(left: [10, 20], right: [30, 5], width: 100, insets: (left: 2, right: 3))
-    #expect(edges.left == [2, 12])
-    #expect(edges.right == [67, 62])
+    let edges = layout(left: [10, 20], right: [30, 5], width: 100, insets: (left: 2, right: 3), gap: 4)
+    #expect(edges.left == [2, 16])
+    #expect(edges.right == [67, 58])
 }
 
 @Test func volumeGlyphs() {
