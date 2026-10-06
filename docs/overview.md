@@ -75,7 +75,34 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   even while the menu bar showed, so a bar learns of the reveal some other way, if it needs
   to. AppKit's Space behaviours do what SketchyBar's private Space does.
 
-## 3. Open questions
+## 3. The bar
+
+- **One process, `zenith`,** an agent app with no Dock icon. It draws Steve's SketchyBar
+  items natively and starts no process to update them; SketchyBar's script protocol is not
+  carried over. Plugins for custom items, as long running processes that push to Zenith,
+  come later ([backlog.md](backlog.md)).
+- **One panel per display, a layer per item** (`Bar`), from the measurements above: a
+  nonactivating `NSPanel` at kCGBackstopMenuLevel, -20, joined to every Space, 25 pt tall
+  along the display's top. Each item's text or image is drawn once into its layer's
+  contents; a change redraws only the items that changed, in one Core Animation
+  transaction, and moves the others only when a width changed. The view finds the item
+  under a click or the pointer from the frames the last layout gave.
+- **Kosmos** (`KosmosLink`): Kosmos pushes its snapshot (Kosmos's docs/ipc.md) as JSON to
+  the Mach port Zenith registers as `io.github.st-eez.zenith`, and Zenith reads only the
+  newest of those waiting. At launch and after a wake Zenith asks for `state`, and a click
+  on a workspace sends `workspace <name>`, each as one request on Kosmos's socket. Kosmos
+  numbers displays as SketchyBar does, and Zenith numbers its screens the same way from
+  `SLSCopyManagedDisplays` (`displayNumber`).
+- **The other items:** the clock redraws at each minute's start on a timer set for it,
+  the battery on IOKit's power source notifications, and the volume on CoreAudio's
+  listeners for the default output device's volume and mute, following a new default
+  device. A click on the volume toggles mute through CoreAudio, and on the front app opens
+  Mission Control.
+- **Look:** the fonts, sizes, paddings and colors of Steve's SketchyBar config of
+  2026-10-06 (standard style), and its app glyph map, copied into `AppIcons.swift`. Colors
+  come from `~/.config/zenith/theme.json` at launch (`Theme`), Tokyo Night without it.
+
+## 4. Open questions
 
 - What WindowServer spends on an update of one panel, and whether keeping items from moving
   cuts it, which needs a quieter WindowServer than Steve's three displays in use give, or a

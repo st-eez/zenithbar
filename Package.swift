@@ -10,6 +10,12 @@ let package = Package(
             name: "CZenith",
             linkerSettings: [.unsafeFlags(["-F/System/Library/PrivateFrameworks", "-framework", "SkyLight"])]
         ),
+        // Kosmos's snapshot, the workspace pills, the clock, the volume glyph, layout and theme.
+        // No AppKit, so tests run without a window server.
+        .target(name: "ZenithCore"),
+        // The bar.
+        .executableTarget(name: "zenith", dependencies: ["CZenith", "ZenithCore"]),
+        .testTarget(name: "ZenithCoreTests", dependencies: ["ZenithCore"]),
         // Measurements of macOS behaviour that the design depends on (docs/overview.md).
         .executableTarget(name: "zenith-probe", dependencies: ["CZenith"]),
     ]
