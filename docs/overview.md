@@ -121,6 +121,12 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   layer with the style's outline, solid, without blur, which shows only on a translucent
   fill. Mockups of these and of `hug`, `framed` and a panel attached to the bar were made
   for Steve on 2026-10-06; he chose these three first.
+- **Install:** `script/install.sh` builds Zenith, copies it to `~/.local/bin/zenith` and
+  runs it from the LaunchAgent `io.github.st-eez.zenith`, which starts it at login and again
+  when it exits, at most every 10 s, launchd's default; errors go to
+  `~/Library/Logs/zenith.log`. `--replace-sketchybar` also stops SketchyBar's Homebrew
+  service, and `--uninstall` removes Zenith. Kosmos looks Zenith's port up again after a
+  restart, so the bar's state comes back without a restart of Kosmos.
 - **Settings reload** when `~/.config/zenith` or a file in it changes: an editor replacing
   a file or `theme-set` relinking one changes the folder, and a write in place changes only
   the file, so Zenith watches both.
