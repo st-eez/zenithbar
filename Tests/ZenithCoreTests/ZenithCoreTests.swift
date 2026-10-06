@@ -71,3 +71,26 @@ import Testing
     #expect(RGBA(hex: "7aa2f7") == nil)
     #expect(Theme(json: Data(##"{"background":"#000000"}"##.utf8)) == nil)
 }
+
+@Test func stylesOutlineTheBar() {
+    let width = 1000.0
+    let standard = BarStyle.standard.outline(width: width)
+    #expect(standard.contains(CGPoint(x: 1, y: 1)) && standard.contains(CGPoint(x: 999, y: 24)))
+    let floating = BarStyle.floating.outline(width: width)
+    #expect(!floating.contains(CGPoint(x: 230, y: 12)))
+    #expect(floating.contains(CGPoint(x: 245, y: 24)))
+    // The rounded bottom corner leaves its corner point clear.
+    #expect(!floating.contains(CGPoint(x: 240.5, y: 0.5)))
+    let tab = BarStyle.tab.outline(width: width)
+    // The flare fills the corner where the bar meets the edge, outside its 12 pt arc...
+    #expect(tab.contains(CGPoint(x: 239, y: 24.5)))
+    // ...and leaves clear the inside of the arc.
+    #expect(!tab.contains(CGPoint(x: 230, y: 15)))
+    #expect(tab.contains(CGPoint(x: 761, y: 24.5)))
+}
+
+@Test func configReadsStyle() {
+    #expect(Config(json: Data(#"{"style":"tab"}"#.utf8))?.style == .tab)
+    #expect(Config(json: Data("{}".utf8))?.style == .standard)
+    #expect(Config(json: Data(#"{"style":"wavy"}"#.utf8)) == nil)
+}

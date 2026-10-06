@@ -99,8 +99,19 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   device. A click on the volume toggles mute through CoreAudio, and on the front app opens
   Mission Control.
 - **Look:** the fonts, sizes, paddings and colors of Steve's SketchyBar config of
-  2026-10-06 (standard style), and its app glyph map, copied into `AppIcons.swift`. Colors
-  come from `~/.config/zenith/theme.json` at launch (`Theme`), Tokyo Night without it.
+  2026-10-06, and its app glyph map, copied into `AppIcons.swift`. Colors come from
+  `~/.config/zenith/theme.json` (`Theme`), Tokyo Night without it.
+- **Styles** (`BarStyle`), chosen by `style` in `~/.config/zenith/config.json`: `standard`
+  edge to edge; `floating` inset 240 pt from each side with its bottom corners rounded by
+  9 pt, Steve's SketchyBar floating style; and `tab`, inset the same with 12 pt bottom
+  corners and its top corners flaring out 12 pt into the screen's edge, Noctalia's
+  `concave_edge_corners`. The panel stays the display's width and the fill is one shape
+  layer with the style's outline, solid, without blur, which shows only on a translucent
+  fill. Mockups of these and of `hug`, `framed` and a panel attached to the bar were made
+  for Steve on 2026-10-06; he chose these three first.
+- **Settings reload** when `~/.config/zenith` or a file in it changes: an editor replacing
+  a file or `theme-set` relinking one changes the folder, and a write in place changes only
+  the file, so Zenith watches both.
 
 ## 4. Open questions
 

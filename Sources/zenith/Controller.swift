@@ -10,6 +10,8 @@ import ZenithCore
     private var numbers: [CGDirectDisplayID: Int] = [:]
     private var rows: [Int: WorkspaceRow] = [:]
     private var theme = Theme.fallback
+    private var config = Config()
+    private var settingsWatches: [DispatchSourceFileSystemObject] = []
     private var battery = Battery.read()
     private var volume: Volume!
     private var hovered: String?
@@ -19,10 +21,8 @@ import ZenithCore
     }
 
     func start() {
-        let themeFile = URL(fileURLWithPath: NSHomeDirectory() + "/.config/zenith/theme.json")
-        if let data = try? Data(contentsOf: themeFile) {
-            if let theme = Theme(json: data) { self.theme = theme } else { log.error("Could not read \(themeFile.path, privacy: .public)") }
-        }
+        readSettings()
+        watchSettings()
         volume = Volume { [weak self] in self?.render() }
         Battery.watch { [weak self] in
             self?.battery = Battery.read()
@@ -42,6 +42,44 @@ import ZenithCore
         placeBars()
         tick()
         kosmos.start()
+    }
+
+    static let settings = URL(fileURLWithPath: NSHomeDirectory() + "/.config/zenith")
+
+    /// `config.json` and `theme.json`, each keeping what it had when its file is missing or
+    /// unreadable.
+    private func readSettings() {
+        if let data = try? Data(contentsOf: Self.settings.appending(path: "theme.json")) {
+            if let theme = Theme(json: data) { self.theme = theme } else { log.error("Could not read theme.json") }
+        }
+        if let data = try? Data(contentsOf: Self.settings.appending(path: "config.json")) {
+            if let config = Config(json: data) { self.config = config } else { log.error("Could not read config.json") }
+        }
+    }
+
+    /// Reads the settings again when their folder changes, as when an editor saves by
+    /// replacing a file or `theme-set` relinks one, or when a file is written in place. A
+    /// change to the folder watches its files again, as they may be new.
+    private func watchSettings() {
+        try? FileManager.default.createDirectory(at: Self.settings, withIntermediateDirectories: true)
+        for watch in settingsWatches { watch.cancel() }
+        settingsWatches = [Self.settings.path, Self.settings.appending(path: "config.json").path,
+                           Self.settings.appending(path: "theme.json").path].compactMap { path in
+            let fd = open(path, O_EVTONLY)
+            guard fd >= 0 else { return nil }
+            let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd,
+                                                                   eventMask: [.write, .delete, .rename], queue: .main)
+            source.setEventHandler { [weak self] in
+                MainActor.assumeIsolated {
+                    self?.readSettings()
+                    self?.render()
+                    self?.watchSettings()
+                }
+            }
+            source.setCancelHandler { close(fd) }
+            source.activate()
+            return source
+        }
     }
 
     private func received(_ state: KosmosState) {
@@ -85,7 +123,7 @@ import ZenithCore
         for (id, bar) in bars {
             let scale = NSScreen.screens.first { $0.displayID == id }?.backingScaleFactor ?? 2
             bar.show(left: leftItems(numbers[id].flatMap { rows[$0] }), right: rightItems(scale: scale),
-                     background: theme.background.cgColor, scale: scale)
+                     style: config.style, background: theme.background.cgColor, scale: scale)
         }
     }
 

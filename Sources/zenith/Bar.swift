@@ -33,12 +33,14 @@ final class BarPanel: NSPanel {
 /// layers whose items changed, and moves the rest only when a width changed
 /// (docs/overview.md, an update's cost).
 @MainActor final class Bar {
-    static let height: CGFloat = 25
-    static let insets: (left: Double, right: Double) = (20, 22)
+    static let height = CGFloat(BarStyle.height)
 
     let display: CGDirectDisplayID
     let panel: BarPanel
-    private let fill = CALayer()
+    private let fill = CAShapeLayer()
+    /// The style and width the fill's outline was drawn for.
+    private var outlined: (style: BarStyle, width: CGFloat)?
+    private var style = BarStyle.standard
     private var left: [(key: String, item: Item)] = []
     private var right: [(key: String, item: Item)] = []
     private var layers: [String: CALayer] = [:]
@@ -77,17 +79,25 @@ final class BarPanel: NSPanel {
     }
 
     /// Shows `left` and `right`, each in order from its end of the bar inward.
-    func show(left: [(key: String, item: Item)], right: [(key: String, item: Item)], background: CGColor, scale: CGFloat) {
+    func show(left: [(key: String, item: Item)], right: [(key: String, item: Item)], style: BarStyle,
+              background: CGColor, scale: CGFloat) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        fill.backgroundColor = background
+        fill.fillColor = background
+        var moved = false
+        if outlined?.style != style || outlined?.width != panel.frame.width {
+            fill.path = style.outline(width: Double(panel.frame.width))
+            outlined = (style, panel.frame.width)
+            self.style = style
+            moved = true
+        }
         let keys = Set((left + right).map(\.key))
         for (key, layer) in layers where !keys.contains(key) {
             layer.removeFromSuperlayer()
             layers[key] = nil
         }
         let old = Dictionary(self.left + self.right, uniquingKeysWith: { first, _ in first })
-        var moved = left.map(\.key) != self.left.map(\.key) || right.map(\.key) != self.right.map(\.key)
+        moved = moved || left.map(\.key) != self.left.map(\.key) || right.map(\.key) != self.right.map(\.key)
         for (key, item) in left + right where old[key] != item || layers[key] == nil {
             moved = moved || old[key]?.width != item.width
             draw(item, into: layer(key, scale: scale))
@@ -134,7 +144,7 @@ final class BarPanel: NSPanel {
 
     private func place() {
         let edges = layout(left: left.map { Double($0.item.width) }, right: right.map { Double($0.item.width) },
-                           width: Double(panel.frame.width), insets: Self.insets)
+                           width: Double(panel.frame.width), insets: style.insets)
         frames = [:]
         for ((key, item), x) in Array(zip(left, edges.left)) + Array(zip(right, edges.right)) {
             let frame = CGRect(x: x, y: 0, width: item.width, height: Self.height)
