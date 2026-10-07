@@ -5,7 +5,8 @@ runs it and reads what it prints; it needs no library and no socket. The agents 
 Steve's dotfiles, `zenith/.config/zenith/plugins/agents`, is the first.
 
 - **Config:** `plugins` in `~/.config/zenith/config.json` lists each as `command`, the
-  program then its arguments with `~` for the home folder, and `interval` in seconds. Zenith
+  program then its arguments with `~` for the home folder, and `interval` in seconds, at least
+  1, or Zenith keeps the config it read last, as for any config it cannot read. Zenith
   knows a plugin by its command, so a change to the list keeps the runs going on, and a
   plugin taken out takes its items off the bar and closes their panel.
 - **Runs:** Zenith runs each plugin at launch, every `interval` seconds, after a wake and on a

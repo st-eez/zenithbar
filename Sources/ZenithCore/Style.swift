@@ -70,6 +70,7 @@ public struct Config: Decodable, Equatable, Sendable {
     public struct Plugin: Decodable, Equatable, Sendable {
         /// The program, `~` standing for the home folder, then its arguments.
         public var command: [String]
+        /// At least 1 s, as a repeating Timer of 0 or less fires about 10,000 times a second.
         public var interval: Double
     }
 
@@ -87,5 +88,19 @@ public struct Config: Decodable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         style = try container.decodeIfPresent(BarStyle.self, forKey: .style) ?? .standard
         plugins = try container.decodeIfPresent([Plugin].self, forKey: .plugins) ?? []
+    }
+}
+
+extension Config.Plugin {
+    private enum CodingKeys: String, CodingKey { case command, interval }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        command = try container.decode([String].self, forKey: .command)
+        interval = try container.decode(Double.self, forKey: .interval)
+        guard interval >= 1 else {
+            throw DecodingError.dataCorruptedError(forKey: .interval, in: container,
+                                                   debugDescription: "a plugin's interval is at least 1 s")
+        }
     }
 }

@@ -122,4 +122,7 @@ import Testing
 @Test func configReadsPlugins() {
     let config = Config(json: Data(#"{"plugins":[{"command":["~/a","b"],"interval":900}]}"#.utf8))
     #expect(config?.plugins == [Config.Plugin(command: ["~/a", "b"], interval: 900)])
+    #expect(Config(json: Data(#"{"plugins":[{"command":["a"],"interval":1}]}"#.utf8)) != nil)
+    #expect(Config(json: Data(#"{"plugins":[{"command":["a"],"interval":0}]}"#.utf8)) == nil)
+    #expect(Config(json: Data(#"{"plugins":[{"command":["a"],"interval":-5}]}"#.utf8)) == nil)
 }
