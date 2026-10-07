@@ -79,8 +79,9 @@ answers an unentitled process. Reads, median of 50:
   without the `com.apple.security.personal-information.location` entitlement, which
   `Resources/ZenithBar.entitlements` now gives it. Allow also opens Location Services'
   settings page 2 s after asking when ZenithBar is still not allowed, as other apps do.
-  Whether the entitlement brings the prompt, and whether the grant survives a reinstall
-  signed with the same certificate, is next.
+  With the entitlement, Allow brought macOS's prompt and Steve allowed ZenithBar
+  (2026-10-07). Whether the grant survives a reinstall of a changed binary signed with the
+  same certificate is unconfirmed until the next update.
 - Creating a `CLLocationManager` and reading its `authorizationStatus` registered the
   executable as a locationd client without a prompt. Whether that lists it in System
   Settings' Location Services was not checked.
