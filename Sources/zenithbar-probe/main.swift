@@ -13,9 +13,17 @@ let commands: [(name: String, usage: String, run: @MainActor ([String]) -> Void)
     ("shape", "shape [visual|masked|skylight|tint...]", { shape($0) }),
     ("watch", "watch [seconds]", { watch(seconds: $0.first.flatMap(Double.init) ?? 120) }),
     ("clicks", "clicks", { _ in clicks() }),
+    ("focus", "focus", { _ in focusProbe() }),
+    // Drives ZenithBar's panels without the pointer, through its test hooks (Controller.watchTestHooks).
+    ("send", "send <command>", { arguments in
+        DistributedNotificationCenter.default().postNotificationName(
+            .init("io.github.st-eez.zenithbar.test"), object: arguments.joined(separator: " "), userInfo: nil,
+            deliverImmediately: true)
+        exit(0)
+    }),
     ("popups", "popups [seconds]", { popups(seconds: $0.first.flatMap(Double.init) ?? 120) }),
     ("tray", "tray list|capture [runs] | tray watch [seconds] [own] | tray press <bundle id>", { tray($0) }),
-    ("network", "network read [runs] | network watch|cost [seconds] | network launchd <arguments>", { network($0) }),
+    ("network", "network read [runs] | network watch|cost [seconds] | network launchd <arguments> | network wifi | network stats [seconds] [spawn] | network speedtest", { network($0) }),
 ]
 
 func usage() -> Never {

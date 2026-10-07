@@ -60,3 +60,28 @@ char *zenithbar_mach_receive(mach_port_t port, uint32_t *length) {
     mach_msg_destroy(&message.header);
     return copy;
 }
+
+#include <ApplicationServices/ApplicationServices.h>
+
+// The second argument receives one byte of the reply, as Kosmos's KosmosBridge.m reads it.
+extern CGError SLPSGetKeyFocusProcess(ProcessSerialNumber *psn, uint8_t *unknown);
+extern CGError _SLPSGetFrontProcess(ProcessSerialNumber *psn);
+
+static pid_t pidOf(ProcessSerialNumber *psn) {
+    pid_t pid = 0;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations" // the pid of a PSN
+    return GetProcessPID(psn, &pid) == noErr ? pid : 0;
+#pragma clang diagnostic pop
+}
+
+pid_t zenithbar_key_focus_pid(void) {
+    ProcessSerialNumber psn = {0};
+    uint8_t unknown = 0;
+    return SLPSGetKeyFocusProcess(&psn, &unknown) == kCGErrorSuccess ? pidOf(&psn) : 0;
+}
+
+pid_t zenithbar_front_pid(void) {
+    ProcessSerialNumber psn = {0};
+    return _SLPSGetFrontProcess(&psn) == kCGErrorSuccess ? pidOf(&psn) : 0;
+}

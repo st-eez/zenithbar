@@ -35,6 +35,7 @@ import SystemConfiguration
     case "watch": networkWatch(seconds: number ?? 120)
     case "cost": networkCost(seconds: number ?? 60)
     case "launchd" where arguments.count > 1: networkLaunchd(Array(arguments.dropFirst()))
+    case "wifi", "stats", "speedtest": networkPanel(arguments)
     default: usage()
     }
     exit(0)

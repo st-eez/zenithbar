@@ -13,6 +13,14 @@ extern CGError SLSSetWindowBackgroundBlurRadius(SLSConnectionID cid, uint32_t wi
 /// The Spaces holding `window`, as an array of numbers.
 CFArrayRef zenithbar_window_spaces(uint32_t window);
 
+#include <unistd.h>
+
+/// The process WindowServer sends keys to, which a nonactivating panel takes from the front
+/// app when it becomes key, as Kosmos reads it for focus follows mouse; 0 when the read fails.
+pid_t zenithbar_key_focus_pid(void);
+/// The front process, as WindowServer has it; 0 when the read fails.
+pid_t zenithbar_front_pid(void);
+
 #include <mach/mach.h>
 
 /// A receive right registered under `name` with the bootstrap server, as SketchyBar registers
