@@ -1,5 +1,8 @@
 # Backlog
 
+- An expired limit keeps its alert for up to 15 minutes: the panel works out its times when
+  it opens, but the agents plugin runs every 900 s. Run a plugin again at the earliest
+  `until` it printed.
 - Find what WindowServer spends on an update of one panel, and whether keeping items from
   moving cuts it: `zenith-probe cost text still` with the Mac otherwise idle.
 - The calendar's double click between a filled and a transparent bar, with text colored
