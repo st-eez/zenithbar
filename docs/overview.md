@@ -105,8 +105,8 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   solid glyphs, read as clashing: SF Symbols at 14 pt (the filled speaker, Wi-Fi, a plugin's
   `symbol`, as the agents' sparkles), Material's solid Ethernet port at 16 pt
   ([network.md](network.md)), and the battery, a solid body filled to the charge over a
-  fainter trough with the percent and the bolt cut out of it, 25 by 14 pt, its digits 10 to
-  11 pt. An outline holding only the number was too faint, and an outline around the fill
+  fainter trough with the percent and the bolt cut out of it, 25 by 14 pt, its digits 8.5 to
+  10 pt and a 8.5 pt bolt centered together, with room around them, as larger crowded the body. An outline holding only the number was too faint, and an outline around the fill
   unwanted. An SF Symbol drawn into a rect of its size stretches, as it draws
   past its size, so each icon is drawn at its own size and cropped to its ink
   (`Sources/zenith/Symbols.swift`).

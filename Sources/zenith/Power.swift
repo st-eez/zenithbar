@@ -56,20 +56,25 @@ struct Battery: Hashable {
         context.restoreGState()
         trough.setFill()
         NSBezierPath(roundedRect: NSRect(x: 32, y: 7, width: 2, height: 6), xRadius: 1, yRadius: 1).fill()
-        let font = NSFont.monospacedDigitSystemFont(ofSize: percent == 100 ? 11.5 : 13, weight: .bold)
+        let font = NSFont.monospacedDigitSystemFont(ofSize: percent == 100 ? 10 : 11.5, weight: .bold)
         let number = String(percent) as NSString
         let textSize = number.size(withAttributes: [.font: font])
-        let origin = NSPoint(x: (charging ? 12 : 16) - textSize.width / 2, y: 10 - textSize.height / 2 + 0.5)
+        // The digits and the bolt centered together, the digits' capitals on the body's middle.
+        let boltHeight: CGFloat = 10, boltWidth = boltHeight * 0.62
+        let middle = outer.minX + (outer.width - (charging ? boltWidth + 1.5 : 0)) / 2
+        let origin = NSPoint(x: middle - textSize.width / 2, y: outer.midY - font.capHeight / 2 + font.descender)
         number.draw(at: origin, withAttributes: [.font: font, .foregroundColor: foreground])
         context.saveGState()
         filled.clip()
         number.draw(at: origin, withAttributes: [.font: font, .foregroundColor: background])
         context.restoreGState()
         if charging {
+            let left = middle + textSize.width / 2 + 1.2, bottom = outer.midY - boltHeight / 2
             let bolt = NSBezierPath()
-            bolt.move(to: NSPoint(x: 28, y: 16.5))
-            for point in [NSPoint(x: 23.5, y: 9.2), NSPoint(x: 26.4, y: 9.2), NSPoint(x: 25, y: 3.5),
-                          NSPoint(x: 29.8, y: 11.2), NSPoint(x: 26.9, y: 11.2)] { bolt.line(to: point) }
+            bolt.move(to: NSPoint(x: left + boltWidth * 0.75, y: bottom + boltHeight))
+            for (x, y) in [(0.0, 0.42), (0.42, 0.42), (0.25, 0.0), (1.0, 0.58), (0.58, 0.58)] {
+                bolt.line(to: NSPoint(x: left + boltWidth * x, y: bottom + boltHeight * y))
+            }
             bolt.close()
             (percent >= 80 ? background : foreground).setFill()
             bolt.fill()
