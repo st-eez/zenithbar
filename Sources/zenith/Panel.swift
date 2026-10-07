@@ -57,6 +57,9 @@ private final class PopupView: NSView {
 
     // The geometry and fonts of Steve's SketchyBar agents panel.
     private static let pad: CGFloat = 10, rowHeight: CGFloat = 23, noteHeight: CGFloat = 14
+    /// Above a caption that follows other rows, so a group's last note stays clear of the next
+    /// group's heading.
+    private static let captionGap: CGFloat = 6
     private static let titleWidth: CGFloat = 128, meterWidth: CGFloat = 170, valueWidth: CGFloat = 62
     private static let width = 2 * pad + titleWidth + meterWidth + valueWidth
 
@@ -75,11 +78,16 @@ private final class PopupView: NSView {
 
     var size: NSSize {
         guard let current, let item else { return .zero }
-        let rows = current.rows.reduce(CGFloat(0)) { height, row in
-            if case .note = row { return height + Self.noteHeight }
-            return height + Self.rowHeight
-        }
+        let rows = current.rows.enumerated().reduce(CGFloat(0)) { height, row in height + Self.height(row.element, at: row.offset) }
         return NSSize(width: Self.width, height: Self.pad + Self.rowHeight * (item.pages.count > 1 ? 2 : 1) + rows + Self.pad)
+    }
+
+    private static func height(_ row: PluginItem.Row, at index: Int) -> CGFloat {
+        switch row {
+        case .note: noteHeight
+        case .caption: rowHeight + (index > 0 ? captionGap : 0)
+        case .meter: rowHeight
+        }
     }
 
     override func updateTrackingAreas() {
@@ -108,9 +116,10 @@ private final class PopupView: NSView {
 
         let pad = Self.pad
         var top = pad
-        let glyph = text(item.icon, size: 13, bold: true, color: theme.accent)
-        draw(glyph, x: pad, top: top, height: Self.rowHeight)
-        draw(text(current.title, size: 11.5, bold: true, color: theme.foreground), x: pad + glyph.size().width + 5, top: top,
+        // Placed by its ink, as the robot glyph draws past its advance.
+        let glyph = text(item.icon, size: 13, bold: true, color: theme.accent), ink = inkBounds(glyph)
+        draw(glyph, x: pad - ink.minX, top: top, height: Self.rowHeight)
+        draw(text(current.title, size: 11.5, bold: true, color: theme.foreground), x: pad + ink.width + 6, top: top,
              height: Self.rowHeight)
         top += Self.rowHeight
         tabs = []
@@ -125,9 +134,10 @@ private final class PopupView: NSView {
             top += Self.rowHeight
         }
         let now = Date()
-        for row in current.rows {
+        for (index, row) in current.rows.enumerated() {
             switch row {
             case let .caption(caption):
+                if index > 0 { top += Self.captionGap }
                 draw(text(caption, size: 9.5, color: theme.dim), x: pad, top: top, height: Self.rowHeight)
                 top += Self.rowHeight
             case let .meter(label, value, detail, tone, bold):
