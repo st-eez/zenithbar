@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Linked into the binary's __TEXT,__info_plist section (Package.swift), as CoreLocation
+     asks a process for the reason it shows in Location Services' prompt (docs/network.md). -->
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>io.github.st-eez.zenithbar</string>
+    <key>CFBundleName</key>
+    <string>ZenithBar</string>
+    <key>NSLocationUsageDescription</key>
+    <string>ZenithBar shows the Wi-Fi network's name and the networks nearby, which macOS gives only to apps Location Services allows.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>ZenithBar shows the Wi-Fi network's name and the networks nearby, which macOS gives only to apps Location Services allows.</string>
+</dict>
+</plist>

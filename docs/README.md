@@ -14,7 +14,13 @@
   Code: `Sources/zenithbar-probe/Tray.swift`.
 - [network.md](network.md): the network item, how ZenithBar finds the interface macOS
   routes through, what CoreWLAN gives it for Wi-Fi on macOS 27, the events and their cost,
-  and the Wi-Fi network's name, which needs Location Services.
-  Code: `Sources/zenithbar/Network.swift`, `Sources/ZenithBarCore/Network.swift`,
-  `Sources/zenithbar-probe/Network.swift`.
+  the Wi-Fi network's name, which needs Location Services, and the network panel: its live
+  figures, Wi-Fi list, speed test, keyboard focus, the views it is built from, and its cost.
+  Code: `Sources/zenithbar/Network.swift`, `Sources/zenithbar/NetworkPanel.swift`,
+  `Sources/zenithbar/NetworkStats.swift`, `Sources/zenithbar/Wifi.swift`,
+  `Sources/zenithbar/PanelKit.swift`, `Sources/zenithbar/Panel.swift`,
+  `Sources/zenithbar/Info.plist`, `Sources/ZenithBarCore/Network.swift`,
+  `Sources/ZenithBarCore/NetworkPanel.swift`, `Sources/CZenithBar/`,
+  `Sources/zenithbar-probe/Network.swift`, `Sources/zenithbar-probe/NetworkPanel.swift`,
+  `Sources/zenithbar-probe/Focus.swift`.
 - [backlog.md](backlog.md): open work, most urgent first.

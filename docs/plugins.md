@@ -40,7 +40,8 @@ item in Steve's dotfiles, `zenithbar/.config/zenithbar/plugins/agents`, is the f
   shows another page, and a right click runs the plugin with `ZENITHBAR_EVENT=refresh`. The
   panel closes 50 ms after the pointer leaves both it and its item.
 - **Panel:** a nonactivating panel at the pop up menu level, over apps' windows and the bar,
-  right aligned under its item, in the geometry and fonts of Steve's SketchyBar agents panel.
+  right aligned under its item, in the geometry and fonts of Steve's SketchyBar agents panel,
+  the same panel and border the network panel shows in ([overview.md](overview.md), panels).
   It draws when it opens and when its item or page changes while it shows; closed, it draws
   nothing.
 - **Why lines of JSON on a pipe:** every language prints JSON, it nests the panel, it can be

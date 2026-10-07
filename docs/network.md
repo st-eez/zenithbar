@@ -1,10 +1,12 @@
 # The network item
 
 The network item shows the interface macOS routes traffic through: Wi-Fi by its signal,
-Ethernet by a wired glyph, and a dim icon when nothing routes. A click opens a panel listing
-every connected interface. This doc records what ZenithBar, an unbundled binary run from a
-LaunchAgent, can read for it on macOS 27, and what that costs. Probe: `zenithbar-probe
-network` (`Sources/zenithbar-probe/Network.swift`). Measured on Steve's M3 Pro, macOS 27.0.1
+Ethernet by a wired glyph, and a dim icon when nothing routes. A click opens the network
+panel, modelled on Omarchy 4's, so Steve needs the native menu bar for nothing on Wi-Fi. This
+doc records what ZenithBar, an unbundled binary run from a LaunchAgent, can read and do for
+them on macOS 27, and what that costs. Probes: `zenithbar-probe network`
+(`Sources/zenithbar-probe/Network.swift`, `Sources/zenithbar-probe/NetworkPanel.swift`) and
+`zenithbar-probe focus` (`Sources/zenithbar-probe/Focus.swift`). Sections 1 to 5: Measured on Steve's M3 Pro, macOS 27.0.1
 (26A434), 2026-10-07, with release builds and the probe run as a LaunchAgent through
 `zenithbar-probe network launchd`. Wi-Fi was en0 on channel 44, Tailscale was up without an
 exit node on utun6, and the UGreen hub's Ethernet, en10, was present with no cable. No
@@ -66,6 +68,9 @@ answers an unentitled process. Reads, median of 50:
   `requestWhenInUseAuthorization()` and Steve to allow it at the prompt. The probe asked for
   nothing, so whether macOS shows that prompt for a client keyed by path, and whether the
   grant survives `script/install.sh` replacing the binary at the same path, is untested.
+- ZenithBar links `Sources/zenithbar/Info.plist` into its binary that way, with the usage
+  strings, and asks (`requestWhenInUseAuthorization()`) only when Steve clicks Allow beside
+  the panel's "NETWORK NAMES NEED LOCATION SERVICES", which shows while nobody has answered.
 - Creating a `CLLocationManager` and reading its `authorizationStatus` registered the
   executable as a locationd client without a prompt. Whether that lists it in System
   Settings' Location Services was not checked.
@@ -122,17 +127,161 @@ costs it 0.5 ms a second more.
   few seconds and the level rarely.
 - **Place:** from the bar's right end, the calendar, the battery, the network, then the
   volume, the native menu bar's order with the network in Wi-Fi's place.
-- **Panel:** a left click opens the plugin panel (`Popup`) with every service that has an
-  address on hardware, the primary first and marked "primary", each under its service name and
-  interface, as "Wi-Fi · en0 · primary": Wi-Fi with its signal as a meter labelled with the
-  network's name, or "Signal" without it, and each with its address and router. It reads
-  when it opens and again at each change while open. It changes nothing.
+- **Panel:** a left click opens the network panel (section 6).
 
-## 6. Untested
+## 6. The panel
 
-Steve's machine was in use on Wi-Fi alone, so the probe changed nothing. Untested: Ethernet
-connected, alone or with Wi-Fi; a cable unplugged; Wi-Fi off, or on and joined to nothing;
+Measured on 2026-10-07 with the Mac on Ethernet, en6, a Thunderbolt adapter at 1000baseT, as
+primary, and Wi-Fi, en0, joined to the same network on channel 140 (5 GHz).
+
+### What it shows
+
+Omarchy 4's network panel (`shell/plugins/panels/network/Panel.qml`, `Model.js`), as Steve's
+Omarchy machine showed it on Ethernet, with what Steve chose of it on 2026-10-07:
+
+- **Header:** the connection's icon large, the bar's (section 5), and its title: the Wi-Fi
+  network's name with its band, "Home (5ghz)", or "Ethernet (1gbit)" with the link speed, as
+  Omarchy writes them (`networkTitle`, `Sources/ZenithBarCore/NetworkPanel.swift`). Under
+  it Omarchy's caption, one of its connection phrases every 2.8 s, or "NOT CONNECTED". At
+  the right, the speed test and, on a Mac with Wi-Fi, the Wi-Fi switch.
+- **Figures** for the primary interface, two pairs a row: Ping and Packet Loss to 1.1.1.1,
+  Omarchy's internet target; Router Ping and Router Loss; Receiving and Sending; Downloaded
+  and Uploaded, the interface's totals since it came up; IP Address and Gateway, each with a
+  copy button. Ping is the mean of the last 5 echoes answered, loss the share of the last 24
+  lost, as Omarchy's (`PingHistory`). Each reads "--" until its first sample, so nothing
+  moves when the samples come.
+- **Speed test:** a line over the figures while it runs, "Testing… 6s" with the capacities so
+  far, then its result, dimmed after an hour, until ZenithBar restarts.
+- **Wi-Fi networks,** on a Mac with Wi-Fi, under a divider, whichever interface is primary:
+  the last scan's results at once (`cachedScanResults`), then a scan's. One row a name, its
+  strongest access point, the joined network first, then known ones, then by signal, under
+  "KNOWN NETWORKS" and "OTHER NETWORKS" (`wifiRows`, `wifiSection`). Each row has the bar's
+  `wifi` symbol filled to its signal, its name or "Hidden", a lock when it needs a password,
+  and its status: Connected, Connecting…, Disconnecting…, Forgetting…, or the failure. The
+  list scrolls past 240 pt.
+- **Clicks,** as Omarchy's: on the joined network, it leaves it; on a secured network the Mac
+  does not know, a password field opens in the row; on any other, it joins without a
+  password. On a known network not joined, Forget shows on hover in the lock's place. While
+  one action runs the other rows wait. A wrong password, saved or typed, opens the field
+  again. An enterprise network the Mac does not know says to join it in System Settings once,
+  as it needs a user name too.
+- Left out, as Steve chose: Omarchy's DNS provider buttons, band locking and QR sharing.
+
+### Reading
+
+- **Counters and link speed:** the kernel's interface list with 64-bit counters
+  (`sysctl` `NET_RT_IFLIST2`) gives each interface's bytes in and out and `ifi_baudrate`:
+  en6 1,000,000,000 b/s, Wi-Fi en0 358,560,000 (its transmit rate), the adapters without a
+  link 0. SystemConfiguration's media options agree for en6 (1000baseT, full duplex). A read
+  of one interface took 0.6 ms of CPU, most of it walking every interface's record.
+- **Ping:** an ICMP echo over a datagram socket (`socket(AF_INET, SOCK_DGRAM,
+  IPPROTO_ICMP)`), which macOS lets a process without privileges open, its reply coming
+  with the IP header. Both echoes of a sample took 0.36 ms of CPU and about 4 ms to come
+  back: the router 0.7 to 1.3 ms, 1.1.1.1 3.9 to 5.0 ms. Running `/sbin/ping` twice took
+  160 to 180 ms a sample and 9.8 ms of the probe's CPU, without its children's.
+  `zenithbar-probe network stats` (30 s): 20 samples, none lost.
+- **Band:** `wlanChannel().channelBand` without Location Services: 5 GHz, channel 140.
+- **Scan:** `scanForNetworks(withSSID: nil)` took 6.9 s and found 4 networks, the cached
+  results held 19, all without names (section 3), so the panel shows the cached ones first
+  and scans on a queue of its own. The known networks' names come from
+  `configuration().networkProfiles`, which needs no authorization: 44.
+- Reads of the SSID, band, known networks and Location Services' answer each ask airportd or
+  locationd, so the panel reads them when it opens, at each network change and after each
+  action, not at each sample.
+
+### Doing
+
+- **Power:** `setPower(true)` with the power on returned no error from the unentitled probe,
+  which suggests airportd lets ZenithBar set it. airport's preferences hold no
+  `RequireAdmin` keys, so System Settings asks no password to turn Wi-Fi on or off. Turning
+  it off is untested.
+- **Forget:** through `networksetup -removepreferredwirelessnetwork en0 <name>`. Steve's user
+  is an admin, and networksetup says it needs admin privileges, or root when System Settings
+  requires a password for system wide preferences. For a name it did not know it answered "not
+  found in the preferred networks list" in 92 ms with no prompt. Removing a known network is
+  untested, so whether that prompts is unconfirmed.
+- **Join and leave:** CoreWLAN's `associate(to:password:)`, with no password for an open or
+  known network, which airportd joins from its own keychain item, and `disassociate()`, as the
+  native menu's Disconnect. Both untested.
+- **Speed test:** `/usr/bin/networkQuality --json`, an option its help lists and its man page
+  does not, prints one JSON object a line about every 200 ms: `downlink_capacity_mbps`,
+  `uplink_capacity_mbps`, `downlink_responsiveness_rpm` and the bytes moved so far, then a
+  summary over several lines, whose last line is "}" (`SpeedTestOutput`). On Steve's Ethernet a
+  run took about 23 s and moved about 200 MB down and 400 MB up by 17 s; the panel's run read
+  97.7 Mbps down, 183 Mbps up, 173 RPM. Whose keys the summary has is unread: the first run
+  was cut off before it and the second logged only its last line. ZenithBar now logs the
+  output's last 2000 bytes when a run ends. Two runs in all, as Steve asked.
+
+### Focus
+
+The panel takes the keyboard only while the password field is open, and gives it back when
+the field closes (`Popup.takeKeyboard`, `Popup.giveKeyboardBack`).
+
+- `zenithbar-probe focus`, with Ghostty front: a nonactivating panel at the pop up menu level
+  that allows key became key on `makeKey()` with its secure field first responder.
+  WindowServer's front process stayed Ghostty, by `_SLPSGetFrontProcess` and NSWorkspace,
+  while it sent keys to the probe (`SLPSGetKeyFocusProcess`), as Raycast's panel does. "ab"
+  posted to the probe's own process reached the field. AppKit called the probe active
+  meanwhile (`NSApp.isActive`), with no change macOS showed elsewhere.
+- Nothing public hands key to another app. Ordering the panel out and in again with key
+  refused gave keys back to Ghostty at once, the panel still shown, and ordering it out did
+  the same.
+- Kosmos (its docs/focus.md and docs/focus-follows-mouse.md) tracks key reports of regular
+  apps only, and ZenithBar is an accessory app, so the panel taking key changes no focus
+  intent. While ZenithBar holds the key window apart from the front app, Kosmos's focus
+  follows mouse focuses nothing (`UserInput.keyHolderApartFromFront`), so moving the
+  pointer out of the panel while typing keeps the keyboard there. Kosmos logged no focus
+  change during the probe.
+- The secure field turns on Secure Input while it holds the keyboard: Kosmos logged "secure
+  input on" as the field became key and "off" as it gave keys back, both within the second.
+  Kosmos's hotkeys stop meanwhile (Kosmos's docs/hotkeys.md), as for any password field.
+  The probe ran from Ghostty, which Kosmos named as the holder; ZenithBar runs from launchd.
+- **Closing:** the panel closes 50 ms after the pointer leaves it and its item, as the plugin
+  panel does, except while someone types in it. A click in another app's window takes key
+  from it, and then it closes unless the pointer is on it. Escape closes the field, gives
+  keys back and closes the panel if the pointer is off it. Return joins, and the panel stays
+  until the join ends, then closes if the pointer is off it.
+
+### The pieces
+
+The panel is built from views in `Sources/zenithbar/PanelKit.swift`, for the sound panel to
+reuse: `PanelLabel`, `PanelButton` (an SF Symbol), `CopyButton`, `PanelSwitch`, `PanelRow`,
+`ScrollList`, `PasswordField` and `PanelDivider`, each drawn in the theme's colors and the
+bar's font, solid, and each taking the first click, as the panel is never active. `Popup`
+(`Sources/zenithbar/Panel.swift`) hosts either a plugin's page or such a view in one
+`NSPanel` with the plugin panel's fill and 2 pt accent border, under its item, and places it
+again when its height changes. Not NSPopover or NSMenu, whose material the theme cannot
+color ([plugins.md](plugins.md)).
+
+Without a pointer, `zenithbar-probe send <command>` drives the panels through a distributed
+notification ZenithBar watches (`Controller.watchTestHooks`): `open network`, `close`,
+`network speedtest`, `network allow` and `network password <name>`. The captures above came
+from `open network` and `screencapture -x`.
+
+### Cost
+
+Installed, ZenithBar spent 0.13 ms of CPU a second with the panel closed and 6.7 to 7.2 ms
+with it open on Ethernet, over 30 s each (`proc_pid_rusage`). A 1 ms sample of its main
+thread put most of the open panel's time in Core Animation drawing the changed labels
+(about 2.8 ms a second) and in the panel's update (about 1 ms); the sampler's queue spends
+about 1 ms a sample. Before the symbols were kept once drawn, the open panel spent 12 ms a
+second, as each update cropped the header's symbol to its ink again. Nothing runs while it
+is closed: the sampler, the phrases and the scan stop, and the figures start fresh at the
+next open. Footprint: 65 MB resident, with every display's bar.
+
+## 7. Untested
+
+Steve's machine was in use, so the probes changed nothing. On 2026-10-07 Ethernet was
+primary with Wi-Fi joined too, and the item showed the Ethernet glyph. Untested: Ethernet
+alone; a cable unplugged; Wi-Fi off, or on and joined to nothing;
 changing or roaming networks; sleep and wake; airportd restarting; a Tailscale exit node or
 a full tunnel VPN as primary; iPhone USB tethering, which the item would show as Ethernet if
 its interface is of Ethernet type. `zenithbar-probe network watch` logs all of these as they
 happen.
+
+The panel, untested on 2026-10-07: joining a network, known or with a typed password;
+leaving one; forgetting one, and whether networksetup prompts then; turning Wi-Fi off and on
+from the switch; a wrong password; an enterprise network; the list and its rows with names,
+which need Location Services (section 3); the password field taking and giving back the
+keyboard inside ZenithBar, which the probe showed for its own panel; and the speed test's
+summary keys.

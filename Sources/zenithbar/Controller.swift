@@ -27,6 +27,14 @@ import ZenithBarKit
     private var pages: [String: Int] = [:]
     private lazy var popup = Popup(selected: { [weak self] page in self?.select(page: page) },
                                    exited: { [weak self] in self?.pointerMayHaveLeft() })
+    private lazy var networkPanel: NetworkPanel = {
+        let panel = NetworkPanel(network: network)
+        panel.host = .init(takeKeyboard: { [weak self] field in self?.popup.takeKeyboard(for: field) },
+                           giveKeyboardBack: { [weak self] in self?.popup.giveKeyboardBack() },
+                           resized: { [weak self] in self?.popup.fit() },
+                           pointerMayHaveLeft: { [weak self] in self?.pointerMayHaveLeft() })
+        return panel
+    }()
 
     func start() {
         guard kosmos.start() else {
@@ -39,7 +47,7 @@ import ZenithBarKit
         network = Network { [weak self] glyph in
             guard let self else { return }
             if glyph { render() }
-            if let shown = popup.shown, shown.key == "network" { openPopup("network", display: shown.display) }
+            if popup.shown?.key == "network" { networkPanel.refresh() }
         }
         Battery.watch { [weak self] in
             self?.battery = Battery.read()
@@ -60,6 +68,33 @@ import ZenithBarKit
         }
         placeBars()
         tick()
+        watchTestHooks()
+    }
+
+    /// Commands for testing panels without the pointer, posted as a distributed notification
+    /// `io.github.st-eez.zenithbar.test` whose object is the command, as `zenithbar-probe send`
+    /// posts it: `open <item>` on the first display showing it, `close`, and for the network
+    /// panel `network speedtest`, `network allow` and `network password <name>`, as clicks on
+    /// them would.
+    private func watchTestHooks() {
+        DistributedNotificationCenter.default().addObserver(forName: .init("io.github.st-eez.zenithbar.test"), object: nil,
+                                                            queue: .main) { note in
+            let words = (note.object as? String ?? "").split(separator: " ", maxSplits: 2).map(String.init)
+            MainActor.assumeIsolated {
+                log.info("Test hook: \(words.joined(separator: " "), privacy: .public)")
+                switch (words.first, words.dropFirst().first) {
+                case ("open", let key?):
+                    if let display = self.bars.keys.sorted().first(where: { self.bars[$0]?.frames[key] != nil }) {
+                        self.openPopup(key, display: display)
+                    }
+                case ("close", _): self.popup.close()
+                case ("network", "speedtest"): self.networkPanel.pressSpeedTest()
+                case ("network", "allow"): self.networkPanel.pressAllow()
+                case ("network", "password"): if words.count > 2 { self.networkPanel.pressPassword(words[2]) }
+                default: log.error("Unknown test hook \(words.joined(separator: " "), privacy: .public)")
+                }
+            }
+        }
     }
 
     static let settings = URL(fileURLWithPath: NSHomeDirectory() + "/.config/zenithbar")
@@ -80,6 +115,8 @@ import ZenithBarKit
         if let shown = popup.shown, shown.key.hasPrefix("plugin."), !pluginItems.contains(where: { $0.key == shown.key }) {
             popup.close()
         }
+        // In the new theme's colors.
+        if let shown = popup.shown, shown.key == "network" { openPopup("network", display: shown.display) }
     }
 
     /// Reads the settings again when their folder changes, as when an editor saves by
@@ -356,19 +393,26 @@ import ZenithBarKit
     }
 
     private func openPopup(_ key: String, display: CGDirectDisplayID) {
-        guard let item = key == "network" ? network.panel() : pluginItems.first(where: { $0.key == key })?.item,
+        if key == "network" { return openNetwork(display: display) }
+        guard let item = pluginItems.first(where: { $0.key == key })?.item,
               !item.hidden, !item.pages.isEmpty,
               let bar = bars[display], let frame = bar.frames[key],
               let screen = NSScreen.screens.first(where: { $0.displayID == display }) else { return popup.close() }
         let anchor = frame.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY)
-        let drawing = if key == "network" {
-            networkDrawing(networkIcon(network.route).icon, size: 13, color: theme.accent.nsColor)
-        } else {
-            item.symbol.flatMap { symbol($0, value: nil, pointSize: 13, color: theme.accent.nsColor) }
-        }
+        let drawing = item.symbol.flatMap { symbol($0, value: nil, pointSize: 13, color: theme.accent.nsColor) }
         let icon = drawing.flatMap { inkImage($0, scale: screen.backingScaleFactor) }.map { NSImage(cgImage: $0.0, size: $0.1) }
         popup.show(item, page: min(pages[key] ?? 0, item.pages.count - 1), key: key, display: display, anchor: anchor,
                    screen: screen.frame, theme: theme, icon: icon)
+    }
+
+    private func openNetwork(display: CGDirectDisplayID) {
+        guard let bar = bars[display], let frame = bar.frames["network"],
+              let screen = NSScreen.screens.first(where: { $0.displayID == display }) else { return popup.close() }
+        networkPanel.theme = theme
+        popup.show(networkPanel, key: "network", display: display,
+                   anchor: frame.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY), screen: screen.frame,
+                   theme: theme, closed: { [weak self] in self?.networkPanel.close() })
+        networkPanel.open()
     }
 
     private func select(page: Int) {
@@ -382,7 +426,8 @@ import ZenithBarKit
     private func pointerMayHaveLeft() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
             MainActor.assumeIsolated {
-                guard let self, let shown = self.popup.shown else { return }
+                // Someone typing in the panel keeps it open (docs/network.md, the panel's focus).
+                guard let self, let shown = self.popup.shown, !self.popup.typing else { return }
                 let pointer = NSEvent.mouseLocation
                 let onItem = self.bars[shown.display].flatMap { bar in
                     bar.frames[shown.key].map { $0.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY) }

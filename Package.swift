@@ -1,5 +1,8 @@
 // swift-tools-version: 6.2
+import Foundation
 import PackageDescription
+
+let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().path
 
 let package = Package(
     name: "ZenithBar",
@@ -17,7 +20,12 @@ let package = Package(
         // from the executable so tests can import them. AppKit, so kept out of ZenithBarCore.
         .target(name: "ZenithBarKit", dependencies: ["ZenithBarCore"]),
         // The bar.
-        .executableTarget(name: "zenithbar", dependencies: ["CZenithBar", "ZenithBarCore", "ZenithBarKit"]),
+        // Its Info.plist is linked into the binary, for Location Services' prompt (docs/network.md).
+        .executableTarget(
+            name: "zenithbar", dependencies: ["CZenithBar", "ZenithBarCore", "ZenithBarKit"], exclude: ["Info.plist"],
+            linkerSettings: [.unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__info_plist",
+                                           "-Xlinker", root + "/Sources/zenithbar/Info.plist"])]
+        ),
         .testTarget(name: "ZenithBarCoreTests", dependencies: ["ZenithBarCore"]),
         .testTarget(name: "ZenithBarKitTests", dependencies: ["ZenithBarCore", "ZenithBarKit"]),
         // Measurements of macOS behaviour that the design depends on (docs/overview.md).

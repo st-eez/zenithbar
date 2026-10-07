@@ -13,10 +13,19 @@
 - More styles from the mockups: `hug`, full width with its bottom corners flaring down into
   the screen's sides, and `framed`, a border round the other three edges; and panels that
   drop out of the bar as one shape, with the agents popup.
-- The Wi-Fi network's name in the network panel ([network.md](network.md)): ZenithBar calls
-  `CLLocationManager.requestWhenInUseAuthorization()` once and Steve allows it at the
-  prompt. First confirm macOS prompts for an executable it keys by path, and whether the
-  grant survives `script/install.sh` replacing the binary.
+- The Wi-Fi network's name and the scan's names ([network.md](network.md), section 3):
+  Steve allows ZenithBar at Location Services' prompt, then confirm the name and the list
+  show, and whether the grant survives `script/install.sh` replacing the binary.
+- Try the network panel's untested paths with Steve at the Mac ([network.md](network.md),
+  untested): join a known network and a new one with its password, a wrong password, leave,
+  forget, the Wi-Fi switch off and on, and the password field taking and giving back the
+  keyboard. Record whether forgetting prompts for an admin password, and the speed test
+  summary's keys from the log.
+- The sound panel, with sliders and device lists, from the views in
+  `Sources/zenithbar/PanelKit.swift`; a slider is the one piece it adds.
+- Joining a hidden network by name, and an enterprise network with a user name, from the
+  network panel; today a hidden network's row does nothing, and an enterprise network's says
+  to join it in System Settings once.
 - Run `zenithbar-probe network watch` while Steve plugs and unplugs Ethernet, turns Wi-Fi
   off and on, changes networks, sleeps and wakes, and turns on a Tailscale exit node, and
   record what the store and CoreWLAN sent and what the item showed

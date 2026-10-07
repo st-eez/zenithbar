@@ -10,11 +10,12 @@ import ZenithBarKit
 @MainActor final class Network {
     private(set) var route = Route.offline(wifiPower: nil)
     private var services: [NetworkService] = []
-    private var primary: NetworkService?
-    private var wifiPower: Bool?
+    private(set) var primary: NetworkService?
+    /// Nil on a Mac without Wi-Fi.
+    private(set) var wifiPower: Bool?
     /// 0 off a network, as CoreWLAN gives it.
-    private var rssi = 0
-    private let client = CWWiFiClient.shared()
+    private(set) var rssi = 0
+    let client = CWWiFiClient.shared()
     private lazy var events = WifiEvents { [weak self] event in
         Task { @MainActor in self?.received(event) }
     }
@@ -112,36 +113,6 @@ import ZenithBarKit
         let before = networkIcon(route), after = networkIcon(next)
         route = next
         changed(before.icon != after.icon || before.dim != after.dim)
-    }
-
-    /// The panel a click opens, read when it opens: every service with an address on hardware,
-    /// the primary first and marked, Wi-Fi with its signal and its network's name when
-    /// Location Services allows it, which it does not for ZenithBar (docs/network.md).
-    func panel() -> PluginItem {
-        let shown = services.filter { $0.kind != .other && $0.address != nil }
-            .sorted { $0 == primary && $1 != primary }
-        var rows: [PluginItem.Row] = []
-        for service in shown {
-            let name = store.flatMap { SCDynamicStoreCopyValue($0, "Setup:/Network/Service/\(service.id)" as CFString) }
-                .flatMap { ($0 as? [String: Any])?["UserDefinedName"] as? String } ?? service.interface
-            rows.append(.caption("\(name)  ·  \(service.interface)" + (service == primary ? "  ·  primary" : "")))
-            if service.kind == .wifi, let interface = client.interface() {
-                rows.append(.meter(label: interface.ssid() ?? "Signal", value: Double(wifiLevel(rssi: rssi)) / 4,
-                                   detail: "\(rssi) dBm", tone: .normal, bold: service == primary))
-            }
-            rows.append(.note(text: "Address " + (service.address ?? "none"), until: nil, since: nil,
-                              detail: service.router.map { "router " + $0 }, tone: .normal))
-        }
-        if rows.isEmpty {
-            let wifi = switch wifiPower {
-            case true?: "Wi-Fi on, not connected"
-            case false?: "Wi-Fi off"
-            case nil: nil as String?
-            }
-            rows.append(.note(text: "No connection", until: nil, since: nil, detail: wifi, tone: .dim))
-        }
-        // The panel draws the bar's icon, not a glyph (Controller.openPopup).
-        return PluginItem(item: "network", icon: "", pages: [.init(title: "Network", rows: rows)])
     }
 }
 

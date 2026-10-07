@@ -124,6 +124,16 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   Control. An output without a volume or a mute property, as Steve's VG279QE5A
   monitors, whose level is set on the monitor, shows the full speaker, and a click does
   nothing there without mute.
+- **Panels** (`Popup`): one nonactivating panel at the pop up menu level, over apps'
+  windows and the bar, right aligned under its item, with a solid fill and a 2 pt accent
+  border. It shows a plugin's page, drawn as rows ([plugins.md](plugins.md)), or the network
+  panel, built from views of `Sources/zenithbar/PanelKit.swift`: labels, icon buttons, a
+  switch, rows, a scrolling list and a password field, in the theme's colors and the bar's
+  font, each taking the first click, as the panel is never active. It takes the keyboard
+  only while a password field is open, without making ZenithBar the front app, and gives it
+  back by ordering out and in ([network.md](network.md), the panel's focus). The sound panel
+  is to reuse these views. NSPopover and NSMenu were left out, as the theme cannot color
+  their material.
 - **Look:** the fonts, sizes, paddings and colors of Steve's SketchyBar config of
   2026-10-06, and its app glyph map, copied into `AppIcons.swift`. Colors come from
   `~/.config/zenithbar/theme.json` (`Theme`), Tokyo Night without it. Steve's dotfiles theme
