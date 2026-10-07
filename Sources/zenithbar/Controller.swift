@@ -68,10 +68,14 @@ import ZenithBarKit
         }
         placeBars()
         tick()
+        #if DEBUG
         watchTestHooks()
+        #endif
     }
 
-    /// Commands for testing panels without the pointer, posted as a distributed notification
+    #if DEBUG
+    /// In debug builds only, as any local process can post the notification: commands for
+    /// testing panels without the pointer, posted as a distributed notification
     /// `io.github.st-eez.zenithbar.test` whose object is the command, as `zenithbar-probe send`
     /// posts it: `open <item>` on the first display showing it, `close`, and for the network
     /// panel `network speedtest`, `network allow` and `network password <name>`, as clicks on
@@ -96,6 +100,7 @@ import ZenithBarKit
             }
         }
     }
+    #endif
 
     static let settings = URL(fileURLWithPath: NSHomeDirectory() + "/.config/zenithbar")
 

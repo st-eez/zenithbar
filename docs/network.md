@@ -253,10 +253,12 @@ bar's font, solid, and each taking the first click, as the panel is never active
 again when its height changes. Not NSPopover or NSMenu, whose material the theme cannot
 color ([plugins.md](plugins.md)).
 
-Without a pointer, `zenithbar-probe send <command>` drives the panels through a distributed
-notification ZenithBar watches (`Controller.watchTestHooks`): `open network`, `close`,
-`network speedtest`, `network allow` and `network password <name>`. The captures above came
-from `open network` and `screencapture -x`.
+Without a pointer, `zenithbar-probe send <command>` drives a debug build's panels through a
+distributed notification it watches (`Controller.watchTestHooks`): `open network`, `close`,
+`network speedtest`, `network allow` and `network password <name>`. Release builds, which
+`script/install.sh` installs, leave the observer out, as any local process can post the
+notification unauthenticated. The captures above came from `open network` and
+`screencapture -x`, while an installed build still had the hook.
 
 ### Cost
 

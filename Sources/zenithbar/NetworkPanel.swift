@@ -501,14 +501,16 @@ import ZenithBarKit
         return image
     }
 
-    // MARK: test hooks
+    // MARK: test hooks, in debug builds only (Controller.watchTestHooks)
 
+    #if DEBUG
     /// Starts the speed test, as a click on its button.
     func pressSpeedTest() { speedTest.start() }
     /// Asks for names, as a click on Allow.
     func pressAllow() { askForNames() }
     /// Opens `ssid`'s password field, as a click on a secured network the Mac does not know.
     func pressPassword(_ ssid: String) { openPassword(ssid) }
+    #endif
 }
 
 private extension NetworkPanel.Status {
