@@ -2,12 +2,13 @@
 
 The network item shows the interface macOS routes traffic through: Wi-Fi by its signal,
 Ethernet by a wired glyph, and a dim icon when nothing routes. A click opens a panel listing
-every connected interface. This doc records what Zenith, an unbundled binary run from a
-LaunchAgent, can read for it on macOS 27, and what that costs. Probe: `zenith-probe network`
-(`Sources/zenith-probe/Network.swift`). Measured on Steve's M3 Pro, macOS 27.0.1 (26A434),
-2026-10-07, with release builds and the probe run as a LaunchAgent through `zenith-probe
-network launchd`. Wi-Fi was en0 on channel 44, Tailscale was up without an exit node on utun6,
-and the UGreen hub's Ethernet, en10, was present with no cable. No Ethernet was connected.
+every connected interface. This doc records what ZenithBar, an unbundled binary run from a
+LaunchAgent, can read for it on macOS 27, and what that costs. Probe: `zenithbar-probe
+network` (`Sources/zenithbar-probe/Network.swift`). Measured on Steve's M3 Pro, macOS 27.0.1
+(26A434), 2026-10-07, with release builds and the probe run as a LaunchAgent through
+`zenithbar-probe network launchd`. Wi-Fi was en0 on channel 44, Tailscale was up without an
+exit node on utun6, and the UGreen hub's Ethernet, en10, was present with no cable. No
+Ethernet was connected.
 
 ## 1. The primary interface
 
@@ -26,13 +27,13 @@ and the UGreen hub's Ethernet, en10, was present with no cable. No Ethernet was 
   en10 Ethernet ("AX88179A"), en1 to en3 Ethernet ("Thunderbolt 1" to "3", the Thunderbolt
   Bridge's members), bridge0 Bridge. Tunnels are not listed.
 
-Zenith takes the store: one source gives the primary interface, every service's address and
-router, and notifications on the main run loop, and it stayed silent while nothing changed.
-The path monitor would still need the store for addresses. When the primary interface is not
-hardware, as a Tailscale exit node or a full tunnel VPN would make it (Steve has WireGuard and
-ProtonVPN services), Zenith shows the first hardware service with a router in the user's
-service order, `Setup:/Network/Global/IPv4`'s `ServiceOrder`, since the tunnel's own traffic
-leaves through it. That case is untested.
+ZenithBar takes the store: one source gives the primary interface, every service's address
+and router, and notifications on the main run loop, and it stayed silent while nothing
+changed. The path monitor would still need the store for addresses. When the primary
+interface is not hardware, as a Tailscale exit node or a full tunnel VPN would make it
+(Steve has WireGuard and ProtonVPN services), ZenithBar shows the first hardware service
+with a router in the user's service order, `Setup:/Network/Global/IPv4`'s `ServiceOrder`,
+since the tunnel's own traffic leaves through it. That case is untested.
 
 ## 2. What CoreWLAN gives
 
@@ -61,7 +62,7 @@ answers an unentitled process. Reads, median of 50:
   `-sectcreate __TEXT __info_plist`, with a `CFBundleIdentifier` and
   `NSLocationUsageDescription`, reported that identifier through `Bundle.main`, and locationd
   still keyed it by path, not determined.
-- Not determined means nobody has been asked. The name needs Zenith to call
+- Not determined means nobody has been asked. The name needs ZenithBar to call
   `requestWhenInUseAuthorization()` and Steve to allow it at the prompt. The probe asked for
   nothing, so whether macOS shows that prompt for a client keyed by path, and whether the
   grant survives `script/install.sh` replacing the binary at the same path, is untested.
@@ -69,7 +70,7 @@ answers an unentitled process. Reads, median of 50:
   executable as a locationd client without a prompt. Whether that lists it in System
   Settings' Location Services was not checked.
 - `configuration().networkProfiles` gave all 44 known networks' names without authorization,
-  with nothing marking the joined one. Zenith does not guess from them.
+  with nothing marking the joined one. ZenithBar does not guess from them.
 
 ## 4. Events
 
@@ -77,12 +78,12 @@ answers an unentitled process. Reads, median of 50:
   main thread, on a 5.02 s grid and only when the RSSI changed: 16 in 180 s, 6 in 90 s, 4 in
   60 s. No power, link, SSID, BSSID or mode event came, as nothing changed.
 - An event's RSSI read -36 to -38 dBm while `rssiValue()` in the same handler read -43 to
-  -44, so Zenith reads `rssiValue()` on each event and shows one scale. The read took 3.7 to
-  5.7 ms there.
+  -44, so ZenithBar reads `rssiValue()` on each event and shows one scale. The read took 3.7
+  to 5.7 ms there.
 - Sleep and wake did not happen during the runs.
 
-`zenith-probe network cost`, three runs of 60 to 90 s a mode, the modes taking turns in 5 s
-stretches. CPU a second:
+`zenithbar-probe network cost`, three runs of 60 to 90 s a mode, the modes taking turns in 5
+s stretches. CPU a second:
 
 | Mode | Probe | airportd |
 |---|---|---|
@@ -100,22 +101,22 @@ costs it 0.5 ms a second more.
 
 ## 5. The item
 
-- **State** (`Network`, `Sources/zenith/Network.swift`): the store's notifications for
-  `State:/Network/Global/IPv4` and every service's IPv4 key read the services, their hardware
-  kinds and the primary interface again; CoreWLAN's power, link and link quality events read
-  the Wi-Fi's power and RSSI again, about 3 ms an event, at most one every 5 s. A wake reads
-  both, and an interrupted connection to airportd monitors again. Nothing polls. Installed, Zenith
-  spent 150 ms of CPU in 120 s with everything else it runs, 1.25 ms a second, and logged no
-  error.
-- **Icon** (`networkIcon`, `Sources/ZenithCore/Network.swift`), solid as the bar's other
-  icons (overview.md, icons). On Wi-Fi, the SF Symbol `wifi` as the native menu bar draws it,
-  its arcs filled by level, in Android's five steps from -100 to -55 dBm (`wifiLevel`), at
-  14 pt, about 12 pt tall as the battery (16 pt outweighed the speaker). On Ethernet,
+- **State** (`Network`, `Sources/zenithbar/Network.swift`): the store's notifications for
+  `State:/Network/Global/IPv4` and every service's IPv4 key read the services, their
+  hardware kinds and the primary interface again; CoreWLAN's power, link and link quality
+  events read the Wi-Fi's power and RSSI again, about 3 ms an event, at most one every 5 s.
+  A wake reads both, and an interrupted connection to airportd monitors again. Nothing
+  polls. Installed, ZenithBar spent 150 ms of CPU in 120 s with everything else it runs,
+  1.25 ms a second, and logged no error.
+- **Icon** (`networkIcon`, `Sources/ZenithBarCore/Network.swift`), solid as the bar's other
+  icons (overview.md, icons). On Wi-Fi, the SF Symbol `wifi` as the native menu bar draws
+  it, its arcs filled by level, in Android's five steps from -100 to -55 dBm (`wifiLevel`),
+  at 14 pt, about 12 pt tall as the battery (16 pt outweighed the speaker). On Ethernet,
   Material Design's solid `ethernet` from Nerd Fonts at 16 pt, Omarchy 4's glyph, as SF
   Symbols has no Ethernet port. With nothing routing, all dim: `wifi.slash` when Wi-Fi is
   off, `wifi.exclamationmark` when it is on, and `network.slash` on a Mac without Wi-Fi.
-  Each is cropped to its ink (`Sources/zenith/Symbols.swift`). Any interface of Ethernet type
-  counts as Ethernet, USB and Thunderbolt adapters included. Omarchy 4's Material Wi-Fi
+  Each is cropped to its ink (`Sources/zenithbar/Symbols.swift`). Any interface of Ethernet
+  type counts as Ethernet, USB and Thunderbolt adapters included. Omarchy 4's Material Wi-Fi
   wedges looked wrong beside the SF speaker; Steve chose the SF arcs on 2026-10-07.
 - **Redraws:** the bar renders only when the icon or its color changes. The RSSI moves every
   few seconds and the level rarely.
@@ -131,7 +132,7 @@ costs it 0.5 ms a second more.
 
 Steve's machine was in use on Wi-Fi alone, so the probe changed nothing. Untested: Ethernet
 connected, alone or with Wi-Fi; a cable unplugged; Wi-Fi off, or on and joined to nothing;
-changing or roaming networks; sleep and wake; airportd restarting; a Tailscale exit node or a
-full tunnel VPN as primary; iPhone USB tethering, which the item would show as Ethernet if
-its interface is of Ethernet type. `zenith-probe network watch` logs all of these as they
+changing or roaming networks; sleep and wake; airportd restarting; a Tailscale exit node or
+a full tunnel VPN as primary; iPhone USB tethering, which the item would show as Ethernet if
+its interface is of Ethernet type. `zenithbar-probe network watch` logs all of these as they
 happen.

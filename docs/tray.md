@@ -1,10 +1,10 @@
 # The tray
 
-Whether Zenith can show the native menu bar's status items, the tray, in its own bar on
-macOS 27, and which of Steve's tray apps Zenith could show natively instead. Probe:
-`zenith-probe tray` (`Sources/zenith-probe/Tray.swift`). Measured on Steve's M3 Pro, macOS
-27.0 (26A428), 2026-10-07, with the menu bar auto-hidden (`_HIHideMenuBar = 1`) for every run,
-three displays, and a release build.
+Whether ZenithBar can show the native menu bar's status items, the tray, in its own bar on
+macOS 27, and which of Steve's tray apps ZenithBar could show natively instead. Probe:
+`zenithbar-probe tray` (`Sources/zenithbar-probe/Tray.swift`). Measured on Steve's M3 Pro,
+macOS 27.0 (26A428), 2026-10-07, with the menu bar auto-hidden (`_HIHideMenuBar = 1`) for
+every run, three displays, and a release build.
 
 ## 1. How macOS 27 holds the items
 
@@ -35,7 +35,7 @@ three displays, and a release build.
 
 ## 2. Listing the items
 
-`zenith-probe tray list 10`, all with the menu bar hidden:
+`zenithbar-probe tray list 10`, all with the menu bar hidden:
 
 | Read | Time | `MenuBarAgent` CPU a read |
 |---|---|---|
@@ -52,8 +52,8 @@ while hidden are where the items show, y 3 to 4 on a 30 pt bar.
 ## 3. Images
 
 ScreenCaptureKit captures a `MenuBarAgent` window alone with
-`SCContentFilter(desktopIndependentWindow:)` while the menu bar is hidden and the window reads
-off screen (`zenith-probe tray capture`):
+`SCContentFilter(desktopIndependentWindow:)` while the menu bar is hidden and the window
+reads off screen (`zenithbar-probe tray capture`):
 
 - The active display's window holds every item drawn as it shows, the clock to the minute.
   Captures at 09:42:55 and 09:43:06 read "9:42" and "9:43".
@@ -62,14 +62,14 @@ off screen (`zenith-probe tray capture`):
   Bitwarden, Tailscale and BetterDisplay, are clear there. The probe's own item confirmed it:
   a template circle showed only in the active display's window, and a red image that is no
   template showed in all three.
-- Captures stay current. In `zenith-probe tray watch 45 own` the probe's item swapped its
+- Captures stay current. In `zenithbar-probe tray watch 45 own` the probe's item swapped its
   template image at 8.0 s and the next capture, at 9.3 s, drew it; it widened at 13.0 s and
   the capture at 14.2 s drew the wide one.
 - Cost: listing the shareable content took 45 to 57 ms, and capturing one window 24 to 34 ms,
   over 100 ms in about one capture of five. `MenuBarAgent` spent 0.1 ms a second on a
   capture a second; WindowServer's share is inside its ±50 ms a second of noise.
-- Glyphs come white on clear, for the dark menu bar here; Zenith would tint them to its theme,
-  as Ice cuts the bar away and tints them.
+- Glyphs come white on clear, for the dark menu bar here; ZenithBar would tint them to its
+  theme, as Ice cuts the bar away and tints them.
 
 Ice PR #995 captures the display's strip of the menu bar instead, which needs the menu bar
 shown, and says a capture of `MenuBarAgent`'s window "holds just the application menu"; it
@@ -77,7 +77,7 @@ does not say which display's window it captured.
 
 ## 4. Change notifications
 
-`zenith-probe tray watch` registered every Accessibility notification it tried on
+`zenithbar-probe tray watch` registered every Accessibility notification it tried on
 `MenuBarAgent`, its windows, slots and items (all accepted), and on each item app's
 application element, `AXExtrasMenuBar` and item (11 of 33 refused with
 `kAXErrorNotificationUnsupported`), while reading and capturing once a second. What arrived:
@@ -91,10 +91,10 @@ application element, `AXExtrasMenuBar` and item (11 of 33 refused with
 - `AXMoved` from the clock's slot every few seconds, as it shifted 2 to 3 pt and back. Clock
   seconds and flashing separators are off, and the cause is unknown.
 
-Nothing arrived when an app's item changed its image, changed its width or moved, or when the
-active menu bar moved to another display. Zenith would take the clock and the add and remove
-notifications, and poll for the rest. `zenith-probe tray cost`, polling once a second, in a
-quiet stretch with each poll run for 20 s:
+Nothing arrived when an app's item changed its image, changed its width or moved, or when
+the active menu bar moved to another display. ZenithBar would take the clock and the add and
+remove notifications, and poll for the rest. `zenithbar-probe tray cost`, polling once a
+second, in a quiet stretch with each poll run for 20 s:
 
 | Poll | `MenuBarAgent` CPU a second | Probe CPU a second |
 |---|---|---|
@@ -112,7 +112,7 @@ would poll the capture and read the slots only when it changes.
 
 ## 5. Clicks
 
-`zenith-probe tray press io.github.st-eez.kosmos` pressed Kosmos's item once through its
+`zenithbar-probe tray press io.github.st-eez.kosmos` pressed Kosmos's item once through its
 `AXExtrasMenuBar` element, with Chrome in front and the menu bar hidden. KeepingYouAwake was
 passed over, as its help text says a click allows sleep.
 
@@ -124,12 +124,12 @@ passed over, as its help text says a click allows sleep.
   is open, returned 597 ms after the press.
 
 A forwarded click therefore opens the app's own menu where the native item is, with the menu
-bar shown, whatever display Zenith's copy sits on. Apps' items offer `AXPress` alone: an app
-whose menu needs a right click, as KeepingYouAwake's does, cannot be opened by Accessibility.
-KeepingYouAwake, Bitwarden, BetterDisplay and OneDrive attach no `AXMenu` to their items and
-handle the press themselves. WindowServer's `Menubar` window coming on screen is a signal for
-the reveal, which [overview.md](overview.md) found missing from `MenuBarAgent`'s windows; it
-was seen once here.
+bar shown, whatever display ZenithBar's copy sits on. Apps' items offer `AXPress` alone: an
+app whose menu needs a right click, as KeepingYouAwake's does, cannot be opened by
+Accessibility. KeepingYouAwake, Bitwarden, BetterDisplay and OneDrive attach no `AXMenu` to
+their items and handle the press themselves. WindowServer's `Menubar` window coming on
+screen is a signal for the reveal, which [overview.md](overview.md) found missing from
+`MenuBarAgent`'s windows; it was seen once here.
 
 ## 6. What breaks a mirror
 
@@ -142,8 +142,8 @@ was seen once here.
   from 771.5 to 956.5. With more items `MenuBarAgent` folds them behind its overflow button, an
   `AXButton` in its `AXExtrasMenuBar` (Ice PR #995); none was present, and how folded items
   read and capture is untested.
-- Permissions: Accessibility for the reads and the press, which Zenith has for nothing today,
-  and Screen Recording for the captures.
+- Permissions: Accessibility for the reads and the press, which ZenithBar has for nothing
+  today, and Screen Recording for the captures.
 - None of this is documented. The window per display, the slots and the remote `AXButton`s
   are `MenuBarAgent`'s current layout and can change in any update.
 - Apps' Accessibility can stall: every read needs a timeout, and the first after launch is
@@ -161,14 +161,14 @@ Read only: `tailscale status --json` (BackendState "Running", 7 peers, no exit n
 `pmset -g assertions`, `karabiner_cli --help`, `cua-driver --help`, the apps' `Info.plist` URL
 schemes and BetterDisplay's integration help in its binary. Nothing that changes state was run.
 
-| App | Drawn now | State Zenith can read | A click | Verdict |
+| App | Drawn now | State ZenithBar can read | A click | Verdict |
 |---|---|---|---|---|
-| Battery, Clock, Sound (Control Center) | yes | IOKit power sources, the clock, CoreAudio, as Zenith does today | Zenith's own actions, as today | Native, done |
-| Wi-Fi | yes | CoreWLAN's interface: power, RSSI, noise, rate and channel; the network name only with Location Services, which Zenith lacks ([network.md](network.md)) | A Zenith panel | Native, done, as a network item that shows Ethernet too |
+| Battery, Clock, Sound (Control Center) | yes | IOKit power sources, the clock, CoreAudio, as ZenithBar does today | ZenithBar's own actions, as today | Native, done |
+| Wi-Fi | yes | CoreWLAN's interface: power, RSSI, noise, rate and channel; the network name only with Location Services, which ZenithBar lacks ([network.md](network.md)) | A ZenithBar panel | Native, done, as a network item that shows Ethernet too |
 | Now Playing | yes | MediaRemote is private, and answers only Apple's own processes since macOS 15.4 (reported, unconfirmed here); Spotify and Music answer AppleScript | Play or pause through the player's AppleScript | Native for Spotify and Music; the system item otherwise |
-| Kosmos | yes | Kosmos already pushes its snapshot to Zenith | Kosmos's commands over its socket | Native |
-| Tailscale | yes | `tailscale status --json`: backend state, this Mac's IPs, peers, exit node, health | `tailscale up`, `down`, `set --exit-node` from a Zenith panel | Native |
-| KeepingYouAwake | yes | its `caffeinate` child in `pmset -g assertions` ("asserting on behalf of Process ID 1649") | `keepingyouawake:///toggle` or `activate?minutes=`; or Zenith takes its own `IOPMAssertion` and the app goes | Native |
+| Kosmos | yes | Kosmos already pushes its snapshot to ZenithBar | Kosmos's commands over its socket | Native |
+| Tailscale | yes | `tailscale status --json`: backend state, this Mac's IPs, peers, exit node, health | `tailscale up`, `down`, `set --exit-node` from a ZenithBar panel | Native |
+| KeepingYouAwake | yes | its `caffeinate` child in `pmset -g assertions` ("asserting on behalf of Process ID 1649") | `keepingyouawake:///toggle` or `activate?minutes=`; or ZenithBar takes its own `IOPMAssertion` and the app goes | Native |
 | BetterDisplay | yes | its integration: the app binary as a CLI, `BetterDisplay://` with x-callback-url, HTTP and distributed notifications, if enabled in its settings (unconfirmed) | the same calls set brightness, resolution and the like | Native for chosen controls |
 | Karabiner | no item | `karabiner_cli --show-current-profile-name`, `--list-profile-names` | `--select-profile` | Native, optional |
 | Bitwarden | yes | nothing: no CLI for the desktop app, and `bw` is not installed | open the app | Mirror, or leave in the menu bar |
@@ -183,16 +183,16 @@ schemes and BetterDisplay's integration help in its binary. Nothing that changes
 
 ## 8. Recommendation
 
-Build the items Steve wants at a glance natively, and leave the rest in the hidden native menu
-bar: Tailscale, KeepingYouAwake (or Zenith's own assertion) and Kosmos, beside the clock,
-battery, volume and network Zenith has. They need no Screen Recording, cost nothing between
-changes, and a click does what Zenith chooses on the display it was made on. Of the other
-drawn items only Bitwarden, Teams, ChatGPT and OneDrive have nothing to read, and a mirrored
-click would still open their menus at the native place with the native menu bar shown, so a
-mirror buys their glyphs alone. Build the mirror later only if Steve wants those glyphs in
-Zenith: capture the active display's `MenuBarAgent` window once a second, read the slots when
-the capture changes, tint the glyphs, and forward clicks with `AXPress`
-([backlog.md](backlog.md)).
+Build the items Steve wants at a glance natively, and leave the rest in the hidden native
+menu bar: Tailscale, KeepingYouAwake (or ZenithBar's own assertion) and Kosmos, beside the
+clock, battery, volume and network ZenithBar has. They need no Screen Recording, cost
+nothing between changes, and a click does what ZenithBar chooses on the display it was made
+on. Of the other drawn items only Bitwarden, Teams, ChatGPT and OneDrive have nothing to
+read, and a mirrored click would still open their menus at the native place with the native
+menu bar shown, so a mirror buys their glyphs alone. Build the mirror later only if Steve
+wants those glyphs in ZenithBar: capture the active display's `MenuBarAgent` window once a
+second, read the slots when the capture changes, tint the glyphs, and forward clicks with
+`AXPress` ([backlog.md](backlog.md)).
 
 Steve chose native items over the mirror on 2026-10-07. Wi-Fi came first, built as a network
 item that shows Ethernet too ([network.md](network.md)).

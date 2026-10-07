@@ -1,10 +1,11 @@
-# Zenith design overview
+# ZenithBar design overview
 
-Zenith is a macOS status bar to replace SketchyBar on Steve's Macs, drawn along the top of
-each display, fed by Kosmos's state and by macOS's own events. It takes from SketchyBar what
-works, from Noctalia its bar shapes, and from Omarchy's shell its behaviour, and where
+ZenithBar is a macOS status bar to replace SketchyBar on Steve's Macs, drawn along the top
+of each display, fed by Kosmos's state and by macOS's own events. It takes from SketchyBar
+what works, from Noctalia its bar shapes, and from Omarchy's shell its behaviour, and where
 SketchyBar's way costs more it does what costs less. SketchyBar configs are not translated:
-Zenith keeps SketchyBar's names for things where they fit, and nothing of its script protocol.
+ZenithBar keeps SketchyBar's names for things where they fit, and nothing of its script
+protocol. It was named Zenith until 2026-10-07, when Steve renamed it after SketchyBar.
 
 ## 1. What the others do
 
@@ -34,11 +35,12 @@ Zenith keeps SketchyBar's names for things where they fit, and nothing of its sc
 
 ## 2. What the probes measured
 
-On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's runs.
+On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar's runs.
 
-- **An update's cost** (`zenith-probe cost`): one item's text changing width and the 12 items
-  after it moving, 300 updates at 20 a second, in seconds alternating with idle ones, since
-  WindowServer's own load drifted by a third between 15 s stretches. Ranges span the runs.
+- **An update's cost** (`zenithbar-probe cost`): one item's text changing width and the 12
+  items after it moving, 300 updates at 20 a second, in seconds alternating with idle ones,
+  since WindowServer's own load drifted by a third between 15 s stretches. Ranges span the
+  runs.
   | | Bar process per update | WindowServer per update | Footprint |
   |---|---|---|---|
   | One panel, a CATextLayer per item | 0.69 to 0.80 ms | 1.0 to 2.8 ms | 10.6 to 10.9 MB |
@@ -55,33 +57,34 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   second. Changing the last item, so no other moves, did not read lower than changing the
   second: WindowServer's noise, about ±1 ms an update read through `ps`, hides the
   difference.
-- **Blur inside a bar's outline** (`zenith-probe shape`): a tab with 32 pt flares and 20 pt
-  bottom corners over stripes. NSVisualEffectView with the outline as its `maskImage`, the
-  same view with the outline as its layer's mask, and a translucent fill with
+- **Blur inside a bar's outline** (`zenithbar-probe shape`): a tab with 32 pt flares and 20
+  pt bottom corners over stripes. NSVisualEffectView with the outline as its `maskImage`,
+  the same view with the outline as its layer's mask, and a translucent fill with
   `SLSSetWindowBackgroundBlurRadius` each blurred the stripes fully inside the outline,
   flares included, and left them sharp in the carved flares and corners. Noctalia's shapes
   need nothing private.
-- **Clicks** (`zenith-probe clicks`): on a nonactivating panel at the status level, clicks on
-  an item and on the fill reached the bar, and clicks in the carved flare and corner, where
-  the window is clear, reached the probe's window behind it. No click activated the probe or
-  made its panel key. A click on the window behind raised it over the bar, both at one level
-  in one app, the reordering behind SketchyBar's blank bar (#850), so a bar keeps one window
-  per display and gives its popups a level of their own.
-- **Spaces** (`zenith-probe watch`, Steve driving, three displays): a panel at
+- **Clicks** (`zenithbar-probe clicks`): on a nonactivating panel at the status level,
+  clicks on an item and on the fill reached the bar, and clicks in the carved flare and
+  corner, where the window is clear, reached the probe's window behind it. No click
+  activated the probe or made its panel key. A click on the window behind raised it over the
+  bar, both at one level in one app, the reordering behind SketchyBar's blank bar (#850), so
+  a bar keeps one window per display and gives its popups a level of their own.
+- **Spaces** (`zenithbar-probe watch`, Steve driving, three displays): a panel at
   kCGBackstopMenuLevel, -20, with `.canJoinAllSpaces` and `.stationary`, stayed on screen
-  through Kosmos workspace switches on two displays, Mission Control, the lock screen and back,
-  and native fullscreen. In fullscreen it joined the fullscreen Space without
-  `.fullScreenAuxiliary`, and the app covered it, as SketchyBar's bar hides there by default.
-  The revealed menu bar slid over it. The window list showed MenuBarAgent's windows off screen
-  even while the menu bar showed, so a bar learns of the reveal some other way, if it needs
-  to; WindowServer's own `Menubar` window came on screen as the menu bar slid in for a status
-  item's menu ([tray.md](tray.md)). AppKit's Space behaviours do what SketchyBar's private Space does.
+  through Kosmos workspace switches on two displays, Mission Control, the lock screen and
+  back, and native fullscreen. In fullscreen it joined the fullscreen Space without
+  `.fullScreenAuxiliary`, and the app covered it, as SketchyBar's bar hides there by
+  default. The revealed menu bar slid over it. The window list showed MenuBarAgent's windows
+  off screen even while the menu bar showed, so a bar learns of the reveal some other way,
+  if it needs to; WindowServer's own `Menubar` window came on screen as the menu bar slid in
+  for a status item's menu ([tray.md](tray.md)). AppKit's Space behaviours do what
+  SketchyBar's private Space does.
 
 ## 3. The bar
 
-- **One process, `zenith`,** an agent app with no Dock icon. It draws Steve's SketchyBar
+- **One process, `zenithbar`,** an agent app with no Dock icon. It draws Steve's SketchyBar
   items natively and starts no process to update them; SketchyBar's script protocol is not
-  carried over. Plugins for custom items, as long running processes that push to Zenith,
+  carried over. Plugins for custom items, as long running processes that push to ZenithBar,
   come later ([backlog.md](backlog.md)).
 - **One panel per display, a layer per item** (`Bar`), from the measurements above: a
   nonactivating `NSPanel` at kCGBackstopMenuLevel, -20, joined to every Space, 25 pt tall
@@ -92,24 +95,25 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   with its display and forgotten once that bar stops showing it, as when its display goes,
   since no exit event comes then; a panel on a display that goes closes.
 - **Kosmos** (`KosmosLink`): Kosmos pushes its snapshot (Kosmos's docs/ipc.md) as JSON to
-  the Mach port Zenith registers as `io.github.st-eez.zenith`, and Zenith reads only the
-  newest of those waiting. At launch and after a wake Zenith asks for `state`, and a click
-  on a workspace sends `workspace <name>`, each as one request on Kosmos's socket. Kosmos's
-  snapshot names each display's CoreGraphics UUID, since Kosmos 638151c, and Zenith matches
-  its screens by it; before, Zenith copied Kosmos's SketchyBar numbering, and the two
-  counted active displays differently. Each workspace joins its display by its own
-  `displayUUID`, as Kosmos's display numbers are no key: it gives 0 both when it manages no
-  display and to a workspace on no listed display, and every display 1 when one is active.
-  From a Kosmos without the field, Zenith joins by number.
+  the Mach port ZenithBar registers as `io.github.st-eez.zenithbar`, and ZenithBar reads
+  only the newest of those waiting. At launch and after a wake ZenithBar asks for `state`,
+  and a click on a workspace sends `workspace <name>`, each as one request on Kosmos's
+  socket. Kosmos's snapshot names each display's CoreGraphics UUID, since Kosmos 638151c,
+  and ZenithBar matches its screens by it; before, ZenithBar copied Kosmos's SketchyBar
+  numbering, and the two counted active displays differently. Each workspace joins its
+  display by its own `displayUUID`, as Kosmos's display numbers are no key: it gives 0 both
+  when it manages no display and to a workspace on no listed display, and every display 1
+  when one is active. From a Kosmos without the field, ZenithBar joins by number.
 - **Icons:** solid, Steve's choice on 2026-10-07 after a line style, a thin speaker beside
   solid glyphs, read as clashing: SF Symbols at 14 pt (the filled speaker, Wi-Fi, a plugin's
   `symbol`, as the agents' sparkles), Material's solid Ethernet port at 16 pt
   ([network.md](network.md)), and the battery, a solid body filled to the charge over a
   fainter trough with the percent and the bolt cut out of it, 25 by 14 pt, its digits 8.5 to
-  10 pt and a 8.5 pt bolt centered together, with room around them, as larger crowded the body. An outline holding only the number was too faint, and an outline around the fill
-  unwanted. An SF Symbol drawn into a rect of its size stretches, as it draws
-  past its size, so each icon is drawn at its own size and cropped to its ink
-  (`Sources/zenith/Symbols.swift`).
+  10 pt and a 8.5 pt bolt centered together, with room around them, as larger crowded the
+  body. An outline holding only the number was too faint, and an outline around the fill
+  unwanted. An SF Symbol drawn into a rect of its size stretches, as it draws past its size,
+  so each icon is drawn at its own size and cropped to its ink
+  (`Sources/zenithbar/Symbols.swift`).
 - **The other items:** the clock redraws at each minute's start on a timer set for it,
   the battery on IOKit's power source notifications, the network on SystemConfiguration's
   and CoreWLAN's notifications ([network.md](network.md)), and the volume on CoreAudio's
@@ -122,8 +126,8 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   nothing there without mute.
 - **Look:** the fonts, sizes, paddings and colors of Steve's SketchyBar config of
   2026-10-06, and its app glyph map, copied into `AppIcons.swift`. Colors come from
-  `~/.config/zenith/theme.json` (`Theme`), Tokyo Night without it. Steve's dotfiles theme
-  build renders it for each theme from `themes/templates/zenith-theme.json.tpl`, and
+  `~/.config/zenithbar/theme.json` (`Theme`), Tokyo Night without it. Steve's dotfiles theme
+  build renders it for each theme from `themes/templates/zenithbar-theme.json.tpl`, and
   `theme-set` links the current one there.
 - **Spacing:** items are laid out by their ink, the part of each drawing that shows, with
   16 pt between neighbours, and a pill's number and glyphs, and the calendar's date and
@@ -142,23 +146,23 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   shell centers its labels (`WidgetButton.qml`); icons center their ink, and a pill's app
   glyphs are raised or lowered to center on its number. Every item's ink then read within
   0.5 pt of the middle, a pixel's rounding, in captures on 2026-10-06.
-- **Styles** (`BarStyle`), chosen by `style` in `~/.config/zenith/config.json`: `standard`
-  edge to edge; `floating` inset 240 pt from each side with its bottom corners rounded by
-  9 pt, Steve's SketchyBar floating style; and `tab`, inset the same with 12 pt bottom
-  corners and its top corners flaring out 12 pt into the screen's edge, Noctalia's
+- **Styles** (`BarStyle`), chosen by `style` in `~/.config/zenithbar/config.json`:
+  `standard` edge to edge; `floating` inset 240 pt from each side with its bottom corners
+  rounded by 9 pt, Steve's SketchyBar floating style; and `tab`, inset the same with 12 pt
+  bottom corners and its top corners flaring out 12 pt into the screen's edge, Noctalia's
   `concave_edge_corners`. The panel stays the display's width and the fill is one shape
   layer with the style's outline, solid, without blur, which shows only on a translucent
   fill. Mockups of these and of `hug`, `framed` and a panel attached to the bar were made
   for Steve on 2026-10-06; he chose these three first.
-- **Install:** `script/install.sh` builds Zenith, copies it to `~/.local/bin/zenith` and
-  runs it from the LaunchAgent `io.github.st-eez.zenith`, which starts it at login and again
-  when it exits, at most every 10 s, launchd's default; errors go to
-  `~/Library/Logs/zenith.log`. `--replace-sketchybar` also stops SketchyBar's Homebrew
-  service, and `--uninstall` removes Zenith. Kosmos looks Zenith's port up again after a
-  restart, so the bar's state comes back without a restart of Kosmos.
-- **Settings reload** when `~/.config/zenith` or a file in it changes: an editor replacing
-  a file or `theme-set` relinking one changes the folder, and a write in place changes only
-  the file, so Zenith watches both.
+- **Install:** `script/install.sh` builds ZenithBar, copies it to `~/.local/bin/zenithbar`
+  and runs it from the LaunchAgent `io.github.st-eez.zenithbar`, which starts it at login
+  and again when it exits, at most every 10 s, launchd's default; errors go to
+  `~/Library/Logs/zenithbar.log`. `--replace-sketchybar` also stops SketchyBar's Homebrew
+  service, and `--uninstall` removes ZenithBar. Kosmos looks ZenithBar's port up again after
+  a restart, so the bar's state comes back without a restart of Kosmos.
+- **Settings reload** when `~/.config/zenithbar` or a file in it changes: an editor
+  replacing a file or `theme-set` relinking one changes the folder, and a write in place
+  changes only the file, so ZenithBar watches both.
 
 ## 4. Open questions
 
