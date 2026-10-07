@@ -105,8 +105,8 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   when it manages no display and to a workspace on no listed display, and every display 1
   when one is active. From a Kosmos without the field, ZenithBar joins by number.
 - **Icons:** solid, Steve's choice on 2026-10-07 after a line style, a thin speaker beside
-  solid glyphs, read as clashing: SF Symbols at 14 pt (the filled speaker, Wi-Fi, a plugin's
-  `symbol`, as the agents' sparkles), Material's solid Ethernet port at 16 pt
+  solid glyphs, read as clashing: SF Symbols at 14 pt (the filled speaker or AirPods, the
+  microphone, Wi-Fi, a plugin's `symbol`, as the agents' sparkles), Material's solid Ethernet port at 16 pt
   ([network.md](network.md)), and the battery, a solid body filled to the charge over a
   fainter trough with the percent and the bolt cut out of it, 25 by 14 pt, its digits 8.5 to
   10 pt and a 8.5 pt bolt centered together, with room around them, as larger crowded the
@@ -116,14 +116,15 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   (`Sources/zenithbar/Symbols.swift`).
 - **The other items:** the clock redraws at each minute's start on a timer set for it,
   the battery on IOKit's power source notifications, the network on SystemConfiguration's
-  and CoreWLAN's notifications ([network.md](network.md)), and the volume on CoreAudio's
-  listeners for the default output device's volume and mute, following a new default device.
-  From the right end the order is the calendar, the battery, the network and the volume, the
-  native menu bar's order with the network in Wi-Fi's place. A click on the network opens
-  its panel, on the volume toggles mute through CoreAudio, and on the front app opens Mission
-  Control. An output without a volume or a mute property, as Steve's VG279QE5A
-  monitors, whose level is set on the monitor, shows the full speaker, and a click does
-  nothing there without mute.
+  and CoreWLAN's notifications ([network.md](network.md)), and the speaker and the microphone
+  on CoreAudio's listeners ([sound.md](sound.md)). From the right end the order is the
+  calendar, the battery, the network, the speaker and the microphone, the native menu bar's
+  order with the network in Wi-Fi's place, then the plugins' items. A click on the network
+  opens its panel, on the speaker opens the sound panel, and on the front app opens Mission
+  Control; a right click on the speaker mutes it, and a click on the microphone mutes it. The
+  microphone shows only while an app uses an input device or a mute is on. An output without
+  a volume or a mute property, as Steve's monitors, whose level is set on the monitor, shows
+  the full speaker.
 - **Panels** (`Popup`): one nonactivating panel at the pop up menu level, over apps'
   windows and the bar, right aligned under its item, with a solid fill and a 2 pt accent
   border. It shows a plugin's page, drawn as rows ([plugins.md](plugins.md)), or the network
@@ -132,7 +133,7 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   font, each taking the first click, as the panel is never active. It takes the keyboard
   only while a password field is open, without making ZenithBar the front app, and gives it
   back by ordering out and in ([network.md](network.md), the panel's focus). The sound panel
-  is to reuse these views. NSPopover and NSMenu were left out, as the theme cannot color
+  is built from the same views and the slider it adds ([sound.md](sound.md)). NSPopover and NSMenu were left out, as the theme cannot color
   their material.
 - **Look:** the fonts, sizes, paddings and colors of Steve's SketchyBar config of
   2026-10-06, and its app glyph map, copied into `AppIcons.swift`. Colors come from
@@ -170,7 +171,8 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   `io.github.st-eez.zenithbar`, which starts it at login and again when it exits, at most
   every 10 s, launchd's default; errors go to `~/Library/Logs/zenithbar.log`. A bundle, as
   Location Services asked nothing of the bare `~/.local/bin/zenithbar` earlier installs ran,
-  which the install removes ([network.md](network.md), section 3). The build is signed in
+  which the install removes ([network.md](network.md), section 3). Location Services' grant
+  survived two reinstalls on 2026-10-07: ZenithBar logs its answer at launch. The build is signed in
   `.build/dist`, copied beside the installed app without the `.app` extension and renamed
   over it once ZenithBar stops. `--replace-sketchybar` also stops SketchyBar's Homebrew
   service, and `--uninstall` removes ZenithBar. Kosmos looks ZenithBar's port up again after

@@ -80,8 +80,14 @@ answers an unentitled process. Reads, median of 50:
   `Resources/ZenithBar.entitlements` now gives it. Allow also opens Location Services'
   settings page 2 s after asking when ZenithBar is still not allowed, as other apps do.
   With the entitlement, Allow brought macOS's prompt and Steve allowed ZenithBar
-  (2026-10-07). Whether the grant survives a reinstall of a changed binary signed with the
-  same certificate is unconfirmed until the next update.
+  (2026-10-07).
+- The grant survives `script/install.sh` replacing the app with a changed binary signed with
+  the same certificate: after two reinstalls on 2026-10-07, locationd logged "Found client
+  identity match" for `io.github.st-eez.zenithbar`, and ZenithBar logged status 3, allowed
+  (`LocationLog`, at launch from the delegate's first call). A status read at once from a new
+  `CLLocationManager` gave 0 at the first of those launches, while locationd logged
+  `SecCodeCopyGuestWithAttributes` failing (100001) and its identity unverified, so the
+  launch log waits for the delegate. A debug build run bare is keyed by its path and reads 0.
 - Creating a `CLLocationManager` and reading its `authorizationStatus` registered the
   executable as a locationd client without a prompt. Whether that lists it in System
   Settings' Location Services was not checked.

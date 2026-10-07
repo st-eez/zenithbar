@@ -126,9 +126,19 @@ import ZenithBarKit
 
 /// Logs Location Services' answer at launch, 3 when allowed and 0 when nobody was asked, so the
 /// log shows whether the grant survived `script/install.sh` replacing the app (docs/network.md,
-/// the network's name). Reading it asks nothing of Steve.
-@MainActor func logLocationAuthorization() {
-    log.notice("Location Services authorization at launch: \(CLLocationManager().authorizationStatus.rawValue)")
+/// the network's name). From the delegate's first call, as a new manager's status read at once
+/// was 0 before locationd had verified the app. Asking for it prompts nothing.
+@MainActor final class LocationLog: NSObject, @preconcurrency CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+
+    override init() {
+        super.init()
+        manager.delegate = self
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        log.notice("Location Services authorization: \(manager.authorizationStatus.rawValue)")
+    }
 }
 
 /// Location Services' answer for ZenithBar, which airportd asks before it gives networks'

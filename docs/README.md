@@ -23,4 +23,10 @@
   `Sources/ZenithBarCore/NetworkPanel.swift`, `Sources/CZenithBar/`,
   `Sources/zenithbar-probe/Network.swift`, `Sources/zenithbar-probe/NetworkPanel.swift`,
   `Sources/zenithbar-probe/Focus.swift`.
+- [sound.md](sound.md): the speaker, the microphone item and the sound panel, what CoreAudio
+  gives for each device, which app uses a microphone, AirPods' models, the listeners and their
+  cost, and the panel's sliders and device lists.
+  Code: `Sources/zenithbar/Sound.swift`, `Sources/zenithbar/SoundPanel.swift`,
+  `Sources/zenithbar/PanelKit.swift`, `Sources/zenithbar/Controller.swift`,
+  `Sources/ZenithBarCore/Sound.swift`, `Sources/zenithbar-probe/Sound.swift`.
 - [backlog.md](backlog.md): open work, most urgent first.

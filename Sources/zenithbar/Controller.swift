@@ -19,6 +19,7 @@ import ZenithBarKit
     private var network: Network!
     private var hovered: (key: String, display: CGDirectDisplayID)?
     private var clock: Timer?
+    private var locationLog: LocationLog?
     private lazy var kosmos = KosmosLink { [weak self] state in
         Task { @MainActor in self?.received(state) }
     }
@@ -81,7 +82,7 @@ import ZenithBarKit
         }
         placeBars()
         tick()
-        logLocationAuthorization()
+        locationLog = LocationLog()
         #if DEBUG
         watchTestHooks()
         #endif

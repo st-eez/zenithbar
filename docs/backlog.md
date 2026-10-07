@@ -13,17 +13,25 @@
 - More styles from the mockups: `hug`, full width with its bottom corners flaring down into
   the screen's sides, and `framed`, a border round the other three edges; and panels that
   drop out of the bar as one shape, with the agents popup.
-- The Wi-Fi network's name and the scan's names ([network.md](network.md), section 3):
-  Steve clicks Allow in the panel of the signed ZenithBar.app and allows it at Location
-  Services' prompt, then confirm the name and the list show, and whether the grant survives
-  `script/install.sh` replacing the app.
+- The Wi-Fi network's name and the scan's names ([network.md](network.md), section 3): with
+  Location Services allowed, and the grant surviving reinstalls, confirm the name and the
+  list show in the panel.
 - Try the network panel's untested paths with Steve at the Mac ([network.md](network.md),
   untested): join a known network and a new one with its password, a wrong password, leave,
   forget, the Wi-Fi switch off and on, and the password field taking and giving back the
   keyboard. Record whether forgetting prompts for an admin password, and the speed test
   summary's keys from the log.
-- The sound panel, with sliders and device lists, from the views in
-  `Sources/zenithbar/PanelKit.swift`; a slider is the one piece it adds.
+- Try the sound panel and the microphone with Steve at the Mac ([sound.md](sound.md),
+  untested): mute the MacBook Pro Microphone from the item while Discord listens, and confirm
+  Discord hears silence; pick an output and an input from the panel, and whether the alert
+  sound device follows; drag both sliders; scroll on the speaker and the microphone with a
+  mouse and a trackpad, and drop scrolling if it misbehaves.
+- With AirPods ([sound.md](sound.md), AirPods): connect and disconnect them with the panel open
+  and closed, let them switch to the iPhone, and take a call, and check the speaker's
+  `airpods.gen4`, the rows, the microphone item and that no row or icon is left behind. Check
+  whether the AirPods' output device lists under INPUT during a call, and whether it keeps
+  counting as a microphone in use after the call, which `IsRunningSomewhere` would show as live
+  while only music plays (sound.md, section 2's ceiling).
 - Joining a hidden network by name, and an enterprise network with a user name, from the
   network panel; today a hidden network's row does nothing, and an enterprise network's says
   to join it in System Settings once.
