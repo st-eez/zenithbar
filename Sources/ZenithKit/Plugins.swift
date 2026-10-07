@@ -4,7 +4,7 @@ import ZenithCore
 /// Runs each plugin every `interval` seconds and when an event asks, and hands each item it
 /// prints to `received` on the main actor (docs/plugins.md). A plugin that runs past 2 minutes
 /// is stopped; a run that is asked for while one goes is dropped, as that run will report.
-@MainActor final class Plugins {
+@MainActor public final class Plugins {
     private let received: @MainActor (PluginItem) -> Void
     private var plugins: [Config.Plugin] = []
     private var timers: [Timer] = []
@@ -14,13 +14,13 @@ import ZenithCore
     /// Which plugin printed each item, so a click on the item reaches its plugin.
     private var owners: [String: [String]] = [:]
 
-    init(received: @escaping @MainActor (PluginItem) -> Void) {
+    public init(received: @escaping @MainActor (PluginItem) -> Void) {
         self.received = received
     }
 
     /// Runs `plugins` now and on their intervals, in place of any before. Items of a plugin no
     /// longer listed lose their owner, and what its run prints after is dropped.
-    func configure(_ plugins: [Config.Plugin]) {
+    public func configure(_ plugins: [Config.Plugin]) {
         guard plugins != self.plugins else { return }
         self.plugins = plugins
         for timer in timers { timer.invalidate() }
@@ -37,17 +37,17 @@ import ZenithCore
     }
 
     /// Whether a plugin in the list printed `item`.
-    func owns(_ item: String) -> Bool { owners[item] != nil }
+    public func owns(_ item: String) -> Bool { owners[item] != nil }
 
     private func listed(_ command: [String]) -> Bool { plugins.contains { $0.command == command } }
 
     /// Runs every plugin early, as after a wake, when what they show may have moved on.
-    func runAll(event: String) {
+    public func runAll(event: String) {
         for plugin in plugins { run(plugin.command, event: event) }
     }
 
     /// Runs the plugin that shows `item`, telling it why in `ZENITH_EVENT`.
-    func run(item: String, event: String) {
+    public func run(item: String, event: String) {
         if let command = owners[item] { run(command, event: event) }
     }
 

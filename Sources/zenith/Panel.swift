@@ -1,5 +1,6 @@
 import AppKit
 import ZenithCore
+import ZenithKit
 
 /// A plugin item's panel, under the item: its page's title, the tabs naming the other pages,
 /// and its rows, drawn when it opens and when what it shows changes (docs/plugins.md). Above

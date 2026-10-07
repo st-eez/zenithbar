@@ -1,9 +1,7 @@
 import CZenith
 import Foundation
-import os
 import ZenithCore
-
-let log = Logger(subsystem: "io.github.st-eez.zenith", category: "zenith")
+import ZenithKit
 
 /// Kosmos's state, pushed to Zenith's Mach port on every change and asked for over Kosmos's
 /// socket at launch and after a wake, and the commands a click sends Kosmos. Nothing runs a

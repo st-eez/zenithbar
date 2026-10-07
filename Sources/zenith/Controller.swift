@@ -1,5 +1,6 @@
 import AppKit
 import ZenithCore
+import ZenithKit
 
 /// Holds what the bars show, and redraws them on each change: Kosmos's state, the clock,
 /// the battery, the volume, the plugins' items and the hovered item.

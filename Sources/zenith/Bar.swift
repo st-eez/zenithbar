@@ -1,5 +1,6 @@
 import AppKit
 import ZenithCore
+import ZenithKit
 
 /// What an item draws. Items are laid out by their ink, the part of the drawing that shows,
 /// so every gap is the same whatever side bearings a font gives its glyphs: the app glyphs
@@ -63,16 +64,6 @@ struct Item: Equatable {
         // AppKit puts the baseline the line's descent above where it draws.
         return height / 2 - middle - Self.pad - descent(text)
     }
-}
-
-/// The ink of `text`'s glyphs, from its origin with y up from its baseline.
-func inkBounds(_ text: NSAttributedString) -> CGRect {
-    CTLineGetBoundsWithOptions(CTLineCreateWithAttributedString(text), .useGlyphPathBounds)
-}
-
-extension NSAttributedString {
-    /// The font of the first character, nil for empty text, as a plugin's blank detail.
-    var firstFont: NSFont? { length > 0 ? attribute(.font, at: 0, effectiveRange: nil) as? NSFont : nil }
 }
 
 private func descent(_ text: NSAttributedString) -> CGFloat {

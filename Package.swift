@@ -13,8 +13,11 @@ let package = Package(
         // Kosmos's snapshot, the workspace pills, the clock, the volume glyph, layout and theme.
         // No AppKit, so tests run without a window server.
         .target(name: "ZenithCore"),
+        // The plugin runner, the log and the text measures the bar and its panel share, apart
+        // from the executable so tests can import them. AppKit, so kept out of ZenithCore.
+        .target(name: "ZenithKit", dependencies: ["ZenithCore"]),
         // The bar.
-        .executableTarget(name: "zenith", dependencies: ["CZenith", "ZenithCore"]),
+        .executableTarget(name: "zenith", dependencies: ["CZenith", "ZenithCore", "ZenithKit"]),
         .testTarget(name: "ZenithCoreTests", dependencies: ["ZenithCore"]),
         // Measurements of macOS behaviour that the design depends on (docs/overview.md).
         .executableTarget(name: "zenith-probe", dependencies: ["CZenith"]),
