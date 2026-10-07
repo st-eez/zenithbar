@@ -107,16 +107,16 @@ costs it 0.5 ms a second more.
   both, and an interrupted connection to airportd monitors again. Nothing polls. Installed, Zenith
   spent 150 ms of CPU in 120 s with everything else it runs, 1.25 ms a second, and logged no
   error.
-- **Icon** (`networkIcon`, `Sources/ZenithCore/Network.swift`), in the bar's line style
-  (overview.md, icons). On Wi-Fi, the SF Symbol `wifi` as the native menu bar draws it, its
-  arcs filled by level, in Android's five steps from -100 to -55 dBm (`wifiLevel`), at 14 pt,
-  about 12 pt tall as the battery (16 pt outweighed the speaker). On Ethernet, a port Zenith
-  draws in SF's strokes (`ethernetPort`), as SF Symbols has none. With nothing routing, all
-  dim: `wifi.slash` when Wi-Fi is off, `wifi.exclamationmark` when it is on, and
-  `network.slash` on a Mac without Wi-Fi. Each is cropped to its ink
-  (`Sources/zenith/Symbols.swift`). Any interface of Ethernet type counts as Ethernet, USB
-  and Thunderbolt adapters included. Omarchy 4's Material glyphs, the `wifi_strength` wedges
-  and the solid `ethernet` port, clashed with the SF speaker; Steve chose these on 2026-10-07.
+- **Icon** (`networkIcon`, `Sources/ZenithCore/Network.swift`), solid as the bar's other
+  icons (overview.md, icons). On Wi-Fi, the SF Symbol `wifi` as the native menu bar draws it,
+  its arcs filled by level, in Android's five steps from -100 to -55 dBm (`wifiLevel`), at
+  14 pt, about 12 pt tall as the battery (16 pt outweighed the speaker). On Ethernet,
+  Material Design's solid `ethernet` from Nerd Fonts at 16 pt, Omarchy 4's glyph, as SF
+  Symbols has no Ethernet port. With nothing routing, all dim: `wifi.slash` when Wi-Fi is
+  off, `wifi.exclamationmark` when it is on, and `network.slash` on a Mac without Wi-Fi.
+  Each is cropped to its ink (`Sources/zenith/Symbols.swift`). Any interface of Ethernet type
+  counts as Ethernet, USB and Thunderbolt adapters included. Omarchy 4's Material Wi-Fi
+  wedges looked wrong beside the SF speaker; Steve chose the SF arcs on 2026-10-07.
 - **Redraws:** the bar renders only when the icon or its color changes. The RSSI moves every
   few seconds and the level rarely.
 - **Place:** from the bar's right end, the calendar, the battery, the network, then the

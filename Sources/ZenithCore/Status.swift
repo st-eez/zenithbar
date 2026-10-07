@@ -17,11 +17,12 @@ public func nextMinute(after date: Date) -> Date {
     Date(timeIntervalSinceReferenceDate: (date.timeIntervalSinceReferenceDate / 60).rounded(.down) * 60 + 60)
 }
 
-/// The SF Symbols speaker for a volume from 0 to 1, and whether it shows dim, as when muted.
-public func volumeGlyph(_ volume: Double, muted: Bool) -> (glyph: String, dim: Bool) {
+/// The filled SF Symbols speaker for a volume from 0 to 1, and whether it shows dim, as when
+/// muted.
+public func volumeSymbol(_ volume: Double, muted: Bool) -> (name: String, dim: Bool) {
     let percent = Int((volume * 100).rounded())
-    if muted || percent == 0 { return ("\u{1002A2}", true) } // speaker.slash
-    if percent >= 66 { return ("\u{1002A8}", false) } // speaker.wave.3
-    if percent >= 33 { return ("\u{1002A6}", false) } // speaker.wave.2
-    return ("\u{1002A4}", false) // speaker.wave.1
+    if muted || percent == 0 { return ("speaker.slash.fill", true) }
+    if percent >= 66 { return ("speaker.wave.3.fill", false) }
+    if percent >= 33 { return ("speaker.wave.2.fill", false) }
+    return ("speaker.wave.1.fill", false)
 }

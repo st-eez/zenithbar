@@ -92,13 +92,12 @@ import Testing
         == [21, 737])
 }
 
-@Test func volumeGlyphs() {
-    #expect(volumeGlyph(0.5, muted: true).dim)
-    #expect(volumeGlyph(0, muted: false).dim)
-    #expect(volumeGlyph(0.7, muted: false).glyph == "\u{1002A8}")
-    #expect(!volumeGlyph(0.7, muted: false).dim)
-    #expect(volumeGlyph(0.4, muted: false).glyph == "\u{1002A6}")
-    #expect(volumeGlyph(0.1, muted: false).glyph == "\u{1002A4}")
+@Test func volumeSymbols() {
+    #expect(volumeSymbol(0.5, muted: true) == ("speaker.slash.fill", true))
+    #expect(volumeSymbol(0, muted: false).dim)
+    #expect(volumeSymbol(0.7, muted: false) == ("speaker.wave.3.fill", false))
+    #expect(volumeSymbol(0.4, muted: false).name == "speaker.wave.2.fill")
+    #expect(volumeSymbol(0.1, muted: false).name == "speaker.wave.1.fill")
 }
 
 @Test func wifiLevels() {
@@ -116,7 +115,7 @@ import Testing
     #expect(networkIcon(.wifi(rssi: -45)) == (.symbol("wifi", value: 1), false))
     #expect(networkIcon(.wifi(rssi: -70)).icon == .symbol("wifi", value: 0.5))
     #expect(networkIcon(.wifi(rssi: -95)).icon == .symbol("wifi", value: 0))
-    #expect(networkIcon(.ethernet) == (.ethernetPort, false))
+    #expect(networkIcon(.ethernet) == (.glyph("\u{F0200}"), false))
     #expect(networkIcon(.offline(wifiPower: false)) == (.symbol("wifi.slash", value: nil), true))
     #expect(networkIcon(.offline(wifiPower: true)) == (.symbol("wifi.exclamationmark", value: nil), true))
     #expect(networkIcon(.offline(wifiPower: nil)) == (.symbol("network.slash", value: nil), true))

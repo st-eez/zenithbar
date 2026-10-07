@@ -10,32 +10,13 @@ func symbol(_ name: String, value: Double?, pointSize: CGFloat, color: NSColor) 
     return image?.withSymbolConfiguration(configuration)
 }
 
-/// An Ethernet port, a jack with its latch's notch below and three pins above, drawn
-/// `height` points tall in the 1.3 pt strokes of SF Symbols at the bar's sizes.
-func ethernetPort(height: CGFloat, color: NSColor) -> NSImage {
-    NSImage(size: NSSize(width: height + 3, height: height + 3), flipped: false) { _ in
-        let unit = height / 11.5, line = 1.3 * unit
-        let jack = NSBezierPath()
-        let (left, right, bottom, top) = (1.5 * unit, 14.5 * unit, 1.5 * unit, 13 * unit)
-        let notch = 3 * unit, latch = 13 * unit * 0.22, middle = (left + right) / 2
-        for (index, point) in [(left, top), (right, top), (right, bottom + notch), (middle + latch, bottom + notch),
-                               (middle + latch, bottom), (middle - latch, bottom), (middle - latch, bottom + notch),
-                               (left, bottom + notch)].enumerated() {
-            if index == 0 { jack.move(to: NSPoint(x: point.0, y: point.1)) } else { jack.line(to: NSPoint(x: point.0, y: point.1)) }
-        }
-        jack.close()
-        jack.lineWidth = line
-        jack.lineJoinStyle = .round
-        color.setStroke()
-        jack.stroke()
-        for x in [5.0, 8, 11] {
-            let pin = NSBezierPath()
-            pin.move(to: NSPoint(x: x * unit, y: top))
-            pin.line(to: NSPoint(x: x * unit, y: top - 2.8 * unit))
-            pin.lineWidth = 1.1 * unit
-            pin.lineCapStyle = .round
-            pin.stroke()
-        }
+/// `text` as an image, for an icon from a font drawn and cropped as a symbol is, with room
+/// around it, as a Nerd Font glyph can draw past its advance (Item.inset).
+func glyph(_ text: String, font: NSFont, color: NSColor) -> NSImage {
+    let string = NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: color])
+    let room = font.pointSize / 2, size = string.size()
+    return NSImage(size: NSSize(width: size.width + 2 * room, height: size.height + 2 * room), flipped: false) { _ in
+        string.draw(at: NSPoint(x: room, y: room))
         return true
     }
 }

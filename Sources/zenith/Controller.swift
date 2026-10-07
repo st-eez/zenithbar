@@ -210,11 +210,11 @@ import ZenithKit
         if let (image, size, ink) = networkImage(route.icon, color: route.dim ? theme.dim : theme.foreground, scale: scale) {
             items.append(("network", Item(content: .image(image, size: size, ink: ink))))
         }
-        let speaker = volumeGlyph(volume.level, muted: volume.muted)
-        let glyph = NSAttributedString(string: speaker.glyph, attributes: [
-            .font: NSFont.systemFont(ofSize: 16), .foregroundColor: (speaker.dim ? theme.dim : theme.foreground).nsColor,
-        ])
-        items.append(("volume", Item(content: .text(glyph), center: .ink)))
+        let speaker = volumeSymbol(volume.level, muted: volume.muted)
+        if let (image, size, ink) = symbolImage(speaker.name, key: "volume", color: speaker.dim ? theme.dim : theme.foreground,
+                                                scale: scale) {
+            items.append(("volume", Item(content: .image(image, size: size, ink: ink))))
+        }
         for (key, item) in pluginItems where !item.hidden {
             let color = item.alert ? theme.alert : theme.foreground
             if let symbol = item.symbol, let (image, size, ink) = symbolImage(symbol, key: key, color: color, scale: scale) {
@@ -267,8 +267,8 @@ import ZenithKit
         var color: RGBA
     }
 
-    /// Each plugin item's symbol at each display scale, drawn again only when it changes, as
-    /// the battery's image is.
+    /// Each item's symbol, the volume's and plugins', at each display scale, drawn again only
+    /// when it changes, as the battery's image is.
     private var symbolImages: [String: (key: SymbolDrawing, image: (CGImage, CGSize, ClosedRange<CGFloat>))] = [:]
 
     /// At 14 pt, as the network's icon.
@@ -287,7 +287,8 @@ import ZenithKit
     private func networkDrawing(_ icon: NetworkIcon, size: CGFloat, color: NSColor) -> NSImage? {
         switch icon {
         case let .symbol(name, value): symbol(name, value: value, pointSize: size, color: color)
-        case .ethernetPort: ethernetPort(height: size * 11.5 / 14, color: color)
+        // The glyph at 16 pt, as the bar's other Nerd Font icons.
+        case let .glyph(text): glyph(text, font: font(size + 2), color: color)
         }
     }
 

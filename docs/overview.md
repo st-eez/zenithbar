@@ -101,13 +101,14 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   `displayUUID`, as Kosmos's display numbers are no key: it gives 0 both when it manages no
   display and to a workspace on no listed display, and every display 1 when one is active.
   From a Kosmos without the field, Zenith joins by number.
-- **Icons:** SF Symbols at 14 to 16 pt (the speaker, Wi-Fi, a plugin's `symbol`, as the
-  agents' sparkles), an Ethernet port drawn in SF's 1.3 pt strokes ([network.md](network.md)),
-  and a battery in the same line style: an outline with a solid fill inside to the charge
-  and the percent cut out of the fill, 25 by 14 pt. An outline holding only the number was
-  too faint (Steve, 2026-10-07). An SF Symbol drawn into a rect of its size
-  stretches, as it draws past its size, so each is drawn at its own size and cropped to its
-  ink (`Sources/zenith/Symbols.swift`).
+- **Icons:** solid, Steve's choice on 2026-10-07 after a line style, a thin speaker beside
+  solid glyphs, read as clashing: SF Symbols at 14 pt (the filled speaker, Wi-Fi, a plugin's
+  `symbol`, as the agents' sparkles), Material's solid Ethernet port at 16 pt
+  ([network.md](network.md)), and the battery, an outline with a solid fill inside to the
+  charge and the percent cut out of the fill, 25 by 14 pt; an outline holding only the
+  number was too faint. An SF Symbol drawn into a rect of its size stretches, as it draws
+  past its size, so each icon is drawn at its own size and cropped to its ink
+  (`Sources/zenith/Symbols.swift`).
 - **The other items:** the clock redraws at each minute's start on a timer set for it,
   the battery on IOKit's power source notifications, the network on SystemConfiguration's
   and CoreWLAN's notifications ([network.md](network.md)), and the volume on CoreAudio's
