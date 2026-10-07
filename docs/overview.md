@@ -17,7 +17,8 @@ Zenith keeps SketchyBar's names for things where they fit, and nothing of its sc
   change. On macOS 27 two of its window choices fail: a click on an empty part of the bar
   raises the bar's window over its items' windows at the same level, blanking the bar
   (FelixKratz/SketchyBar#850), and alias items find nothing, since MenuBarAgent hosts every
-  app's status item in one window at layer 24 (#849).
+  app's status item in one window per display at layer 24 (#849); [tray.md](tray.md) covers
+  what can replace them.
 - **Noctalia 5.2** (native C++, EGL): one surface per bar, its outline drawn by a rounded
   rectangle shader whose corners are each convex or concave with their own radius. Concave
   corners where the bar meets the screen edge, with `margin_ends`, make a tab hanging from
@@ -73,7 +74,8 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   `.fullScreenAuxiliary`, and the app covered it, as SketchyBar's bar hides there by default.
   The revealed menu bar slid over it. The window list showed MenuBarAgent's windows off screen
   even while the menu bar showed, so a bar learns of the reveal some other way, if it needs
-  to. AppKit's Space behaviours do what SketchyBar's private Space does.
+  to; WindowServer's own `Menubar` window came on screen as the menu bar slid in for a status
+  item's menu ([tray.md](tray.md)). AppKit's Space behaviours do what SketchyBar's private Space does.
 
 ## 3. The bar
 

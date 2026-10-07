@@ -150,6 +150,22 @@ struct Capture {
         return 0.2126 * Double(pixels[index]) + 0.7152 * Double(pixels[index + 1]) + 0.0722 * Double(pixels[index + 2])
     }
 
+    /// How many pixels inside `rect`, CoreGraphics' global coordinates, are not clear, and a
+    /// hash of every pixel there, which changes when anything drawn there changes.
+    func ink(in rect: CGRect) -> (pixels: Int, hash: Int) {
+        let minX = max(0, Int((rect.minX - origin.x) * scale)), maxX = min(width, Int((rect.maxX - origin.x) * scale))
+        let minY = max(0, Int((rect.minY - origin.y) * scale)), maxY = min(height, Int((rect.maxY - origin.y) * scale))
+        var count = 0, hasher = Hasher()
+        for y in minY..<max(minY, maxY) {
+            for x in minX..<max(minX, maxX) {
+                let index = (y * width + x) * 4
+                if pixels[index + 3] > 25 { count += 1 }
+                hasher.combine(pixels[index..<index + 4].reduce(UInt32(0)) { $0 << 8 | UInt32($1) })
+            }
+        }
+        return (count, hasher.finalize())
+    }
+
     /// The spread of luminance along the row of pixels `span` points wide centered on `point`:
     /// near 255 across sharp black and white stripes, near 0 where they are blurred.
     func contrast(at point: CGPoint, span: CGFloat) -> Double? {
