@@ -100,7 +100,9 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   Mission Control.
 - **Look:** the fonts, sizes, paddings and colors of Steve's SketchyBar config of
   2026-10-06, and its app glyph map, copied into `AppIcons.swift`. Colors come from
-  `~/.config/zenith/theme.json` (`Theme`), Tokyo Night without it.
+  `~/.config/zenith/theme.json` (`Theme`), Tokyo Night without it. Steve's dotfiles theme
+  build renders it for each theme from `themes/templates/zenith-theme.json.tpl`, and
+  `theme-set` links the current one there.
 - **Spacing:** items are laid out by their ink, the part of each drawing that shows, with
   16 pt between neighbours, and a pill's number and glyphs, and the calendar's date and
   time, are kerned to 8 pt of ink apart. Laid out by advance widths, as first built, the

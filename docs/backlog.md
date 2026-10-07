@@ -6,8 +6,6 @@
 - The agents item and popup, as Zenith's first plugin.
 - The calendar's double click between a filled and a transparent bar, with text colored
   from the wallpaper under it.
-- A theme template in the dotfiles theme build for `~/.config/zenith/theme.json`, linked by
-  `theme-set`; Zenith reloads it on its own.
 - A config file for which items show, their order and their look, and the socket plugins
   push to.
 - More styles from the mockups: `hug`, full width with its bottom corners flaring down into
