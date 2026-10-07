@@ -19,6 +19,7 @@ let package = Package(
         // The bar.
         .executableTarget(name: "zenith", dependencies: ["CZenith", "ZenithCore", "ZenithKit"]),
         .testTarget(name: "ZenithCoreTests", dependencies: ["ZenithCore"]),
+        .testTarget(name: "ZenithKitTests", dependencies: ["ZenithCore", "ZenithKit"]),
         // Measurements of macOS behaviour that the design depends on (docs/overview.md).
         .executableTarget(name: "zenith-probe", dependencies: ["CZenith"]),
     ]
