@@ -103,8 +103,10 @@ connected.
   changes.
 - **CONNECTED:** connected devices on the current row's fill, each with its icon and its battery
   under its name. A click disconnects it.
-- **AVAILABLE:** paired devices not connected. A click connects one. Omarchy calls these PAIRED
-  and lists devices a scan finds under AVAILABLE; ZenithBar scans for nothing, Steve's choice.
+- **MY DEVICES:** paired devices not connected, under System Settings' name for them, as
+  AVAILABLE read as nearby when most were not (Steve, 2026-10-07): a Mac cannot tell a paired
+  device is in range without connecting. A click connects one. Omarchy calls these PAIRED and
+  lists devices a scan finds under AVAILABLE; ZenithBar scans for nothing, Steve's choice.
 - **Rows:** by name; a device whose name is empty or an address is left out, as Omarchy's
   `hasHumanName`. Icons (`bluetoothSymbol`): AirPods by their model, from the sound panel's
   product table ([sound.md](sound.md), AirPods), then by minor type: `headphones`,

@@ -19,7 +19,7 @@ import ZenithBarCore
     private let caption = PanelLabel(size: 9.5, bold: true)
     private let power = PanelSwitch()
     private let note = PanelLabel(size: 11.5)
-    private let sections = [Section("CONNECTED"), Section("AVAILABLE")]
+    private let sections = [Section("CONNECTED"), Section("MY DEVICES")]
     private var phrase = 0
     private var timer: Timer?
     /// The switch's position from its click until the state reads back.
