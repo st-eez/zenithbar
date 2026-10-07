@@ -27,6 +27,12 @@ stop() {
     launchctl bootout "$domain/$label" 2>/dev/null || true
     # A Zenith started by hand holds the Mach name the new one registers.
     pkill -x zenith 2>/dev/null || true
+    # bootout can return before launchd lets the label go, and a bootstrap then fails with
+    # "Input/output error", leaving no bar.
+    for _ in {1..50}; do
+        launchctl print "$domain/$label" >/dev/null 2>&1 || break
+        sleep 0.1
+    done
 }
 
 if [[ $mode == uninstall ]]; then

@@ -13,14 +13,18 @@ func symbol(_ name: String, value: Double?, pointSize: CGFloat, color: NSColor) 
 /// `image` drawn at `scale` and cropped to its ink, so an item centers and spaces it by its
 /// ink as it does a glyph: the bitmap, its size in points, and its ink's span, all of it.
 func inkImage(_ image: NSImage, scale: CGFloat) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {
-    let width = Int(ceil(image.size.width * scale)), height = Int(ceil(image.size.height * scale))
+    // A symbol drawn into a rect of its size stretches, its size not its drawing's: at 14 pt
+    // "wifi" came out as wide as at 16 pt. Drawn at its own size, on a canvas with room
+    // around it for whatever it draws past its size, then cropped.
+    let width = Int(ceil(image.size.width * 2 * scale)), height = Int(ceil(image.size.height * 2 * scale))
     guard width > 0, height > 0,
           let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
                                   space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                   bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue) else { return nil }
     NSGraphicsContext.saveGraphicsState()
     NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
-    image.draw(in: NSRect(x: 0, y: 0, width: width, height: height))
+    context.scaleBy(x: scale, y: scale)
+    image.draw(at: NSPoint(x: image.size.width / 2, y: image.size.height / 2), from: .zero, operation: .sourceOver, fraction: 1)
     NSGraphicsContext.restoreGraphicsState()
     guard let pixels = context.data?.bindMemory(to: UInt8.self, capacity: width * height * 4) else { return nil }
     // Rows run from the top, and each pixel's alpha comes first.
