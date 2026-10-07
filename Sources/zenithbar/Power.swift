@@ -1,5 +1,6 @@
 import AppKit
 import IOKit.ps
+import ZenithBarKit
 
 /// The internal battery's charge and whether it is on AC power, nil without a battery.
 struct Battery: Hashable {
@@ -20,10 +21,10 @@ struct Battery: Hashable {
         return nil
     }
 
-    /// Calls `changed` on the main thread at each change IOKit reports for any power source.
+    /// Calls `changed` at each change IOKit reports for any power source, on the main run loop.
     @MainActor static func watch(_ changed: @escaping @MainActor () -> Void) {
         batteryChanged = changed
-        let source = IOPSNotificationCreateRunLoopSource({ _ in MainActor.assumeIsolated { batteryChanged?() } }, nil)
+        let source = IOPSNotificationCreateRunLoopSource({ _ in onMain { batteryChanged?() } }, nil)
         CFRunLoopAddSource(CFRunLoopGetMain(), source?.takeRetainedValue(), .defaultMode)
     }
 

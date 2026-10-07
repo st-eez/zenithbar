@@ -32,7 +32,7 @@ import ZenithBarKit
         let changed = target?.interface != interface || target?.router != router
         target = (interface, router)
         if timer == nil {
-            let timer = Timer(timeInterval: 1.5, repeats: true) { _ in MainActor.assumeIsolated { self.sample() } }
+            let timer = Timer(timeInterval: 1.5, repeats: true) { _ in onMain { self.sample() } }
             timer.tolerance = 0.1
             RunLoop.main.add(timer, forMode: .common)
             self.timer = timer
@@ -64,12 +64,10 @@ import ZenithBarKit
                 },
                 linkSpeed: data?.speed ?? 0,
                 replies: Dictionary(uniqueKeysWithValues: hosts.map { ($0, replies[$0]) }))
-            DispatchQueue.main.async {
-                MainActor.assumeIsolated {
-                    self.busy = false
-                    // A sample for an interface the panel has left, or after it closed, is dropped.
-                    if self.target?.interface == target.interface { self.sampled(sample) }
-                }
+            onMain {
+                self.busy = false
+                // A sample for an interface the panel has left, or after it closed, is dropped.
+                if self.target?.interface == target.interface { self.sampled(sample) }
             }
         }
     }
@@ -208,11 +206,11 @@ private func checksum(_ bytes: [UInt8]) -> UInt16 {
                 if data.isEmpty { break }
                 tail = (tail + data).suffix(2000)
                 let readings = parsed.append(data)
-                if !readings.isEmpty { DispatchQueue.main.async { MainActor.assumeIsolated { self?.read(readings) } } }
+                if !readings.isEmpty { onMain { self?.read(readings) } }
             }
             process.waitUntilExit()
             let status = process.terminationStatus, summary = String(decoding: tail, as: UTF8.self)
-            DispatchQueue.main.async { MainActor.assumeIsolated { self?.finish(status: status, last: summary) } }
+            onMain { self?.finish(status: status, last: summary) }
         }
         changed()
     }

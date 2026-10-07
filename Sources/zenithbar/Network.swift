@@ -16,9 +16,7 @@ import ZenithBarKit
     /// 0 off a network, as CoreWLAN gives it.
     private(set) var rssi = 0
     let client = CWWiFiClient.shared()
-    private lazy var events = WifiEvents { [weak self] event in
-        Task { @MainActor in self?.received(event) }
-    }
+    private lazy var events = WifiEvents { [weak self] event in onMain { self?.received(event) } }
     private var store: SCDynamicStore?
     /// Called at each change, with whether the item's icon or color changed.
     private let changed: @MainActor (_ glyph: Bool) -> Void
@@ -33,9 +31,7 @@ import ZenithBarKit
 
     /// The primary interface and every service's address, notified on change.
     private func watchStore() {
-        store = SCDynamicStoreCreate(nil, "zenithbar" as CFString, { _, _, _ in
-            MainActor.assumeIsolated { networkChanged?() }
-        }, nil)
+        store = SCDynamicStoreCreate(nil, "zenithbar" as CFString, { _, _, _ in onMain { networkChanged?() } }, nil)
         guard let store else { return log.error("Could not open SystemConfiguration's dynamic store") }
         networkChanged = { [weak self] in self?.read() }
         SCDynamicStoreSetNotificationKeys(store, ["State:/Network/Global/IPv4"] as CFArray,

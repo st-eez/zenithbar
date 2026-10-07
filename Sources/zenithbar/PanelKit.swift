@@ -1,5 +1,6 @@
 import AppKit
 import ZenithBarCore
+import ZenithBarKit
 
 // The pieces the bar's interactive panels are built from: labels, buttons, a switch, a slider,
 // rows, a scrolling list and a password field, drawn in the theme's colors and the bar's fonts, solid,
@@ -190,7 +191,7 @@ final class CopyButton: PanelControl {
         NSPasteboard.general.setString(value, forType: .string)
         button.symbolName = "checkmark"
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-            MainActor.assumeIsolated { self?.button.symbolName = "doc.on.doc" }
+            onMain { self?.button.symbolName = "doc.on.doc" }
         }
     }
 }

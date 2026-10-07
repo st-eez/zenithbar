@@ -21,9 +21,7 @@ import ZenithBarKit
     private var hovered: (key: String, display: CGDirectDisplayID)?
     private var clock: Timer?
     private var locationLog: LocationLog?
-    private lazy var kosmos = KosmosLink { [weak self] state in
-        Task { @MainActor in self?.received(state) }
-    }
+    private lazy var kosmos = KosmosLink { [weak self] state in onMain { self?.received(state) } }
     private lazy var plugins = Plugins { [weak self] item in self?.received(item) }
     /// The plugins' items, in the order they first printed them.
     private var pluginItems: [(key: String, item: PluginItem)] = []
@@ -80,10 +78,10 @@ import ZenithBarKit
             self?.render()
         }
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil,
-                                               queue: .main) { _ in MainActor.assumeIsolated { self.placeBars() } }
+                                               queue: .main) { _ in onMain { self.placeBars() } }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil,
                                                           queue: .main) { _ in
-            MainActor.assumeIsolated {
+            onMain {
                 self.battery = Battery.read()
                 self.sound.read()
                 self.network.read()
@@ -115,7 +113,7 @@ import ZenithBarKit
         DistributedNotificationCenter.default().addObserver(forName: .init("io.github.st-eez.zenithbar.test"), object: nil,
                                                             queue: .main) { note in
             let words = (note.object as? String ?? "").split(separator: " ", maxSplits: 2).map(String.init)
-            MainActor.assumeIsolated {
+            onMain {
                 log.info("Test hook: \(words.joined(separator: " "), privacy: .public)")
                 switch (words.first, words.dropFirst().first) {
                 case ("open", let key?):
@@ -178,7 +176,7 @@ import ZenithBarKit
             let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fd,
                                                                    eventMask: [.write, .delete, .rename], queue: .main)
             source.setEventHandler { [weak self] in
-                MainActor.assumeIsolated {
+                onMain {
                     // Watched again first, so a write while the settings are read is seen.
                     self?.watchSettings()
                     self?.readSettings()
@@ -215,7 +213,7 @@ import ZenithBarKit
         clock?.invalidate()
         render()
         let timer = Timer(fire: nextMinute(after: Date()), interval: 0, repeats: false) { _ in
-            MainActor.assumeIsolated { self.tick() }
+            onMain { self.tick() }
         }
         timer.tolerance = 0.05
         RunLoop.main.add(timer, forMode: .common)
@@ -525,7 +523,7 @@ import ZenithBarKit
     /// back on one of them by then, as when it crosses the gap between them.
     private func pointerMayHaveLeft() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-            MainActor.assumeIsolated {
+            onMain {
                 // Someone typing in the panel keeps it open (docs/network.md, the panel's focus).
                 guard let self, let shown = self.popup.shown, !self.popup.typing else { return }
                 let pointer = NSEvent.mouseLocation

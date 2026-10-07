@@ -44,27 +44,28 @@ import ZenithBarKit
     /// Called once it starts, after the prompt's answer, and as the power changes.
     nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
         let allowed = central.state != .unauthorized
-        MainActor.assumeIsolated {
+        onMain {
             // IOBluetooth calls `connected` for each device connected now, then for each new connection.
-            if allowed, connects == nil {
-                connects = IOBluetoothDevice.register(forConnectNotifications: self, selector: #selector(connected(_:device:)))
+            if allowed, self.connects == nil {
+                self.connects = IOBluetoothDevice.register(forConnectNotifications: self,
+                                                           selector: #selector(self.connected(_:device:)))
             }
-            readTwice()
+            self.readTwice()
         }
     }
 
     // IOBluetooth calls these three on CoreBluetooth's queue when a connection comes from
     // outside ZenithBar, as AirPods connecting from their case, not on the main thread; a
     // main-actor method there trapped at launch with AirPods connected (2026-10-07). So they
-    // are nonisolated and hop to the main thread.
+    // are nonisolated and enter through `onMain` (docs/overview.md, threads).
     @objc private nonisolated func connected(_ notification: IOBluetoothUserNotification, device: IOBluetoothDevice) {
         device.register(forDisconnectNotification: self, selector: #selector(disconnected(_:device:)))
-        DispatchQueue.main.async { MainActor.assumeIsolated { self.readTwice() } }
+        onMain { self.readTwice() }
     }
 
     @objc private nonisolated func disconnected(_ notification: IOBluetoothUserNotification, device: IOBluetoothDevice) {
         notification.unregister()
-        DispatchQueue.main.async { MainActor.assumeIsolated { self.readTwice() } }
+        onMain { self.readTwice() }
     }
 
     // MARK: reads
@@ -74,7 +75,7 @@ import ZenithBarKit
     /// while the probes ran.
     private func readTwice() {
         read()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in MainActor.assumeIsolated { self?.read() } }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in onMain { self?.read() } }
     }
 
     /// system_profiler off the main thread, about 140 ms and 40 ms of CPU, once at a time.
@@ -93,15 +94,13 @@ import ZenithBarKit
                 next = bluetoothState(json: pipe.fileHandleForReading.readDataToEndOfFile())
                 process.waitUntilExit()
             }
-            DispatchQueue.main.async {
-                MainActor.assumeIsolated {
-                    guard let self else { return }
-                    self.reading = false
-                    if let next { self.received(next) } else { log.error("Could not read Bluetooth from system_profiler") }
-                    if self.readAgain {
-                        self.readAgain = false
-                        self.read()
-                    }
+            onMain {
+                guard let self else { return }
+                self.reading = false
+                if let next { self.received(next) } else { log.error("Could not read Bluetooth from system_profiler") }
+                if self.readAgain {
+                    self.readAgain = false
+                    self.read()
                 }
             }
         }
@@ -137,11 +136,9 @@ import ZenithBarKit
 
     @objc private nonisolated func connectionComplete(_ device: IOBluetoothDevice, status: IOReturn) {
         let address = device.addressString
-        DispatchQueue.main.async {
-            MainActor.assumeIsolated {
-                if status != kIOReturnSuccess, let address { self.failed(address, "connect", status) }
-                self.readTwice()
-            }
+        onMain {
+            if status != kIOReturnSuccess, let address { self.failed(address, "connect", status) }
+            self.readTwice()
         }
     }
 
@@ -164,7 +161,7 @@ import ZenithBarKit
         pending[address] = action
         changed()
         DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self] in
-            MainActor.assumeIsolated {
+            onMain {
                 guard let self, self.pending[address] == action else { return }
                 self.pending[address] = nil
                 self.changed()

@@ -122,7 +122,7 @@ import ZenithBarKit
         isOpen = true
         phrase = Int.random(in: 0..<connectionPhrases.count)
         let timer = Timer(timeInterval: 2.8, repeats: true) { _ in
-            MainActor.assumeIsolated {
+            onMain {
                 self.phrase += 1
                 self.update()
             }
@@ -205,7 +205,7 @@ import ZenithBarKit
     private func askForNames() {
         wifi.askForNames { [weak self] in self?.namesChanged() }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-            MainActor.assumeIsolated {
+            onMain {
                 guard let self, !self.wifi.namesAllowed else { return }
                 NSWorkspace.shared.open(URL(string:
                     "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)

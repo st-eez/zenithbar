@@ -35,7 +35,7 @@ import ZenithBarKit
         // A click in another app's window takes the keyboard from the password field, and the
         // panel closes unless the pointer is on it.
         NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: panel, queue: .main) {
-            [weak self] _ in MainActor.assumeIsolated { if self?.releasing == false { exited() } }
+            [weak self] _ in onMain { if self?.releasing == false { exited() } }
         }
     }
 
@@ -115,7 +115,7 @@ import ZenithBarKit
         panel.makeFirstResponder(nil)
         panel.orderOut(nil)
         if reorder { panel.orderFrontRegardless() }
-        DispatchQueue.main.async { [weak self] in MainActor.assumeIsolated { self?.releasing = false } }
+        DispatchQueue.main.async { [weak self] in onMain { self?.releasing = false } }
     }
 }
 

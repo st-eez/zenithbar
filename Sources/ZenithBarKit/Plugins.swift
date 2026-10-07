@@ -27,7 +27,7 @@ import ZenithBarCore
         owners = owners.filter { listed($0.value) }
         timers = plugins.map { plugin in
             let timer = Timer(timeInterval: plugin.interval, repeats: true) { _ in
-                MainActor.assumeIsolated { self.run(plugin.command, event: "interval") }
+                onMain { self.run(plugin.command, event: "interval") }
             }
             timer.tolerance = plugin.interval / 10
             RunLoop.main.add(timer, forMode: .common)
@@ -65,12 +65,10 @@ import ZenithBarCore
                 return log.error("A plugin printed a line that is not an item: \(String(decoding: line.prefix(200), as: UTF8.self), privacy: .public)")
             }
             // In order, as a plugin may print a cached item before a fresh one.
-            DispatchQueue.main.async {
-                MainActor.assumeIsolated {
-                    guard let self, self.listed(command) else { return }
-                    self.owners[item.item] = command
-                    self.received(item)
-                }
+            onMain {
+                guard let self, self.listed(command) else { return }
+                self.owners[item.item] = command
+                self.received(item)
             }
         }
         // Read to the pipe's end, which comes when the plugin and any child it left holding its
@@ -88,7 +86,7 @@ import ZenithBarCore
             if process.terminationStatus != 0 {
                 log.notice("Plugin \(program, privacy: .public) exited with \(process.terminationStatus)")
             }
-            Task { @MainActor in self?.running[command] = nil }
+            onMain { self?.running[command] = nil }
         }
         do {
             try process.run()

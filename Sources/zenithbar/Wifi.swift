@@ -58,7 +58,7 @@ import ZenithBarKit
                 found = nil
             }
             let networks = found.map(Array.init)
-            DispatchQueue.main.async { MainActor.assumeIsolated { done(networks) } }
+            onMain { done(networks) }
         }
     }
 
@@ -100,7 +100,7 @@ import ZenithBarKit
                 }
             } catch { failure = "\(error)" }
             if let failure { log.error("Could not forget \(ssid, privacy: .public): \(failure, privacy: .public)") }
-            DispatchQueue.main.async { MainActor.assumeIsolated { done(failure == nil ? nil : "Failed") } }
+            onMain { done(failure == nil ? nil : "Failed") }
         }
     }
 
@@ -119,7 +119,7 @@ import ZenithBarKit
                 default: "Failed"
                 }
             }
-            DispatchQueue.main.async { MainActor.assumeIsolated { done(failure) } }
+            onMain { done(failure) }
         }
     }
 }
@@ -128,7 +128,7 @@ import ZenithBarKit
 /// log shows whether the grant survived `script/install.sh` replacing the app (docs/network.md,
 /// the network's name). From the delegate's first call, as a new manager's status read at once
 /// was 0 before locationd had verified the app. Asking for it prompts nothing.
-@MainActor final class LocationLog: NSObject, @preconcurrency CLLocationManagerDelegate {
+@MainActor final class LocationLog: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
 
     override init() {
@@ -136,14 +136,16 @@ import ZenithBarKit
         manager.delegate = self
     }
 
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    /// On the run loop of the thread that made the manager, the main one; it touches no
+    /// main-actor state.
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         log.notice("Location Services authorization: \(manager.authorizationStatus.rawValue)")
     }
 }
 
 /// Location Services' answer for ZenithBar, which airportd asks before it gives networks'
 /// names (docs/network.md, the network's name).
-@MainActor private final class Locator: NSObject, @preconcurrency CLLocationManagerDelegate {
+@MainActor private final class Locator: NSObject, CLLocationManagerDelegate {
     private lazy var manager: CLLocationManager = {
         let manager = CLLocationManager()
         manager.delegate = self
@@ -159,8 +161,8 @@ import ZenithBarKit
         manager.requestWhenInUseAuthorization()
     }
 
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         log.info("Location Services status \(manager.authorizationStatus.rawValue)")
-        changed?()
+        onMain { self.changed?() }
     }
 }

@@ -20,9 +20,7 @@ import ZenithBarKit
     private var keeper = MicKeeper()
     /// config.json's `keepBuiltInMic`.
     var keepBuiltInMic = true
-    private lazy var listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
-        MainActor.assumeIsolated { self?.readSoon() }
-    }
+    private lazy var listener: AudioObjectPropertyListenerBlock = { @Sendable [weak self] _, _ in onMain { self?.readSoon() } }
 
     init(changed: @escaping @MainActor () -> Void) {
         self.changed = changed
@@ -35,7 +33,7 @@ import ZenithBarKit
         guard !readPending else { return }
         readPending = true
         DispatchQueue.main.async { [weak self] in
-            MainActor.assumeIsolated {
+            onMain {
                 self?.readPending = false
                 self?.read()
             }
@@ -92,12 +90,10 @@ import ZenithBarKit
             guard (try? process.run()) != nil else { return log.error("Could not run system_profiler") }
             let found = bluetoothDevices(json: pipe.fileHandleForReading.readDataToEndOfFile())
             process.waitUntilExit()
-            DispatchQueue.main.async {
-                MainActor.assumeIsolated {
-                    guard let self else { return }
-                    self.bluetooth.merge(found) { $1 }
-                    self.changed()
-                }
+            onMain {
+                guard let self else { return }
+                self.bluetooth.merge(found) { $1 }
+                self.changed()
             }
         }
     }

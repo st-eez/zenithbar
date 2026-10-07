@@ -1,5 +1,6 @@
 import AppKit
 import ZenithBarCore
+import ZenithBarKit
 
 /// The Bluetooth panel, after Omarchy 4's (docs/bluetooth.md, the panel): a header with the
 /// item's glyph, "Bluetooth", Omarchy's rotating caption and the power switch; then CONNECTED,
@@ -74,7 +75,7 @@ import ZenithBarCore
         timer?.invalidate()
         phrase = Int.random(in: 0..<bluetoothPhrases.count)
         let timer = Timer(timeInterval: 2.8, repeats: true) { _ in
-            MainActor.assumeIsolated {
+            onMain {
                 self.phrase += 1
                 self.update()
             }
@@ -97,7 +98,7 @@ import ZenithBarCore
         update()
         // Back to what the state says if it never changes, as when the call is refused.
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
-            MainActor.assumeIsolated {
+            onMain {
                 self?.asked = nil
                 self?.update()
             }
