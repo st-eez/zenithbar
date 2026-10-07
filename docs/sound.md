@@ -239,7 +239,11 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
   ([network.md](network.md), the pieces) and the slider it adds. Omarchy's input level meter
   and per app mixer are left out: macOS has no volume per app, and a meter would need
   ZenithBar to open the microphone.
-- **Test hooks,** debug builds only (`Controller.watchTestHooks`): `open volume`, `close`, and
+- **Module** (`SoundModule`, `Sources/zenithbar/SoundModule.swift`): both items, their clicks
+  and scrolling, and the panel under whichever opened it, from `Sound`'s state
+  ([overview.md](overview.md), modules).
+- **Test hooks,** debug builds only (`Controller.watchTestHooks`, and `SoundModule.test` for
+  `mic`): `open volume`, `close`, and
   `mic live|muted|off|real`, which draws the microphone item that way without an app or a mute,
   for captures.
 

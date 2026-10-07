@@ -1,7 +1,8 @@
 # ZenithBar docs
 
 - [overview.md](overview.md): the goal, what SketchyBar, Noctalia and Omarchy do, what the
-  probes measured, the bar's design, and the open questions.
+  probes measured, the bar's design, its modules, how a crash loop ends, the thread each
+  callback arrives on, and the open questions.
   Code: `Sources/zenithbar/`, `Sources/ZenithBarCore/`, `Sources/ZenithBarKit/`,
   `Sources/CZenithBar/`, `Sources/zenithbar-probe/`, `script/install.sh`.
 - [plugins.md](plugins.md): plugins, the commands that show items and panels, their output
@@ -18,6 +19,7 @@
   figures, Wi-Fi list, speed test, keyboard focus, the views it is built from, and its cost.
   Code: `Sources/zenithbar/Network.swift`, `Sources/zenithbar/NetworkPanel.swift`,
   `Sources/zenithbar/NetworkStats.swift`, `Sources/zenithbar/Wifi.swift`,
+  `Sources/zenithbar/NetworkModule.swift`,
   `Sources/zenithbar/PanelKit.swift`, `Sources/zenithbar/Panel.swift`,
   `Resources/Info.plist`, `script/install.sh`, `Sources/ZenithBarCore/Network.swift`,
   `Sources/ZenithBarCore/NetworkPanel.swift`, `Sources/CZenithBar/`,
@@ -27,12 +29,12 @@
   gives for each device, which app uses a microphone, AirPods' models, the listeners and their
   cost, and the panel's sliders and device lists.
   Code: `Sources/zenithbar/Sound.swift`, `Sources/zenithbar/SoundPanel.swift`,
-  `Sources/zenithbar/PanelKit.swift`, `Sources/zenithbar/Controller.swift`,
+  `Sources/zenithbar/PanelKit.swift`, `Sources/zenithbar/SoundModule.swift`,
   `Sources/ZenithBarCore/Sound.swift`, `Sources/zenithbar-probe/Sound.swift`.
 - [bluetooth.md](bluetooth.md): the Bluetooth item and panel, what system_profiler, IOBluetooth
   and CoreBluetooth give on macOS 27 and which need Bluetooth permission, the private power
   call, battery levels, the events and their cost, and what stays untested.
   Code: `Sources/zenithbar/Bluetooth.swift`, `Sources/zenithbar/BluetoothPanel.swift`,
-  `Sources/zenithbar/Controller.swift`, `Sources/ZenithBarCore/Bluetooth.swift`,
+  `Sources/zenithbar/BluetoothModule.swift`, `Sources/ZenithBarCore/Bluetooth.swift`,
   `Resources/Info.plist`, `Sources/zenithbar-probe/Bluetooth.swift`.
 - [backlog.md](backlog.md): open work, most urgent first.

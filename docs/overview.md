@@ -127,6 +127,27 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   microphone shows only while an app uses an input device or a mute is on. An output without
   a volume or a mute property, as Steve's monitors, whose level is set on the monitor, shows
   the full speaker.
+- **Modules** (`BarModule`, `Sources/zenithbar/Module.swift`): each built-in item of the right
+  run comes from a module in a file of its own: `CalendarModule`, `BatteryModule`,
+  `NetworkModule`, `BluetoothModule` and `SoundModule`, which shows the speaker and the
+  microphone. A module gives the keys of its items; its items for a display's scale and the
+  theme, leaving out one it hides; its clicks and scrolls; its panel's view, with what runs
+  while the panel opens, closes and refreshes; what it reads again after a wake; what it takes
+  from config.json; and in debug builds its test hooks. `Controller` keeps the modules in one
+  list in bar order and hands each what its keys receive, and names no item outside that
+  list, so a new built-in item is a module file and an entry in the list. A module asks for a
+  redraw through its `ModuleHost`, saying whether its icon changed, and the controller then
+  refreshes the module's panel while it shows. The modules read services that know nothing of
+  the bar: `Sound`, `Network`, `Bluetooth` and `Battery` hold the system's state and call back
+  on each change, and the panels read the same services. The workspaces, the front app and the
+  plugins' items stay in `Controller`. Each module keeps its images in a `DrawingCache`, which
+  draws an image again only when what it shows changes; keyed by `AnyHashable` values built at
+  each lookup, a render with nothing changed took about 0.03 ms more, 4%, so its keys are
+  typed. A render, release builds, all three displays, the main thread's CPU over 3000 renders
+  with nothing changed and 300 with every item changed, five runs each, taking turns, on
+  2026-10-07: before the modules 0.697 to 0.721 ms and 4.06 to 4.31 ms, with them 0.715 to
+  0.717 ms and 4.09 to 4.18 ms. Left out: a module's stop, as each runs until ZenithBar exits;
+  a config that turns built-in items off ([backlog.md](backlog.md)) would need it.
 - **Panels** (`Popup`): one nonactivating panel at the pop up menu level, over apps'
   windows and the bar, right aligned under its item, with a solid fill and a 2 pt accent
   border. It shows a plugin's page, drawn as rows ([plugins.md](plugins.md)), or the network
@@ -171,8 +192,9 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
 - **Install:** `script/install.sh` builds ZenithBar into `/Applications/ZenithBar.app`, an
   agent bundle (`LSUIElement`) with `Resources/Info.plist`, signed with the first Apple
   Development certificate as Kosmos's bundle is, and runs its binary from the LaunchAgent
-  `io.github.st-eez.zenithbar`, which starts it at login and again when it exits, at most
-  every 10 s, launchd's default; errors go to `~/Library/Logs/zenithbar.log`. A bundle, as
+  `io.github.st-eez.zenithbar`, which starts it at login and again when it crashes or exits
+  with an error (`KeepAlive`'s `SuccessfulExit` false), at most every 10 s, launchd's default;
+  errors go to `~/Library/Logs/zenithbar.log`. A bundle, as
   Location Services asked nothing of the bare `~/.local/bin/zenithbar` earlier installs ran,
   which the install removes ([network.md](network.md), section 3). Location Services' grant
   survived two reinstalls on 2026-10-07: ZenithBar logs its answer at launch. The build is signed in
@@ -180,11 +202,58 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   over it once ZenithBar stops. `--replace-sketchybar` also stops SketchyBar's Homebrew
   service, and `--uninstall` removes ZenithBar. Kosmos looks ZenithBar's port up again after
   a restart, so the bar's state comes back without a restart of Kosmos.
+- **Crash loops** (`LaunchGuard`, `Sources/ZenithBarKit/LaunchGuard.swift`): launchd has no
+  limit on restarts, so a crash at launch, as Bluetooth's on 2026-10-07, left no bar and a
+  crash report every 10 s. Started by launchd, ZenithBar counts its launches in
+  `~/Library/Application Support/ZenithBar/quick-launches`, and a run that lasts 30 s clears
+  the count. The launch after three that each ended within 30 s logs why, to the unified log
+  and `zenithbar.log`, clears the count and exits 0, which launchd does not restart.
+  `launchctl kickstart gui/$(id -u)/io.github.st-eez.zenithbar`, the next login or
+  `script/install.sh`, which clears the count too, starts it again. A run by hand counts
+  nothing. A ZenithBar that cannot get its Mach name, as while a debug copy holds it, so stops
+  after three tries where it retried every 10 s before. Tested on 2026-10-07 under a separate
+  label with a copy of a debug build: launchd restarted it after a SIGSEGV and after two exits
+  with an error, and the fourth launch logged, exited 0 and stayed stopped.
 - **Settings reload** when `~/.config/zenithbar` or a file in it changes: an editor
   replacing a file or `theme-set` relinking one changes the folder, and a write in place
   changes only the file, so ZenithBar watches both.
 
-## 4. Open questions
+## 4. Threads
+
+Every callback macOS makes enters the main actor through `onMain`
+(`Sources/ZenithBarKit/OnMain.swift`): its entry is nonisolated, a `@Sendable` closure or a
+`nonisolated` method, and `onMain` runs its body at once on the main thread and on the main
+queue's next turn from any other. A callback that arrives off the main thread is then one turn
+late where a main-actor method would trap: IOBluetooth called `Bluetooth.connected` on
+CoreBluetooth's queue, and the method's isolation check crashed every launch with AirPods
+connected (2026-10-07, fixed in 75a191e). `onMain` holds the code's one
+`MainActor.assumeIsolated`, after it checks the thread. Code that waits a turn on purpose, as
+`Sound` does to read once for a burst of listener calls, dispatches to the main queue and
+enters through `onMain` there.
+
+Seen: logged by a debug copy that wrote each `onMain` caller's thread and queue, 2026-10-07;
+the rest follow from where they are registered.
+
+| Callback | Registered by | Arrives on | |
+|---|---|---|---|
+| Kosmos's snapshots on the Mach port, and its socket's replies | `KosmosLink` | ZenithBar's `zenithbar.kosmos` queue | seen |
+| A plugin's output | `Plugins`, a pipe's `readabilityHandler` | Foundation's `com.apple.NSFileHandle.fd_monitoring` queue | seen |
+| A plugin exiting | `Plugins`, `Process.terminationHandler` | a global queue | seen |
+| The clock, the plugins' intervals, the panels' phrases, the network panel's samples | `Timer` on the main run loop | main | seen |
+| `config.json`, `theme.json` and their folder changing | `DispatchSource` on the main queue | main | |
+| Screens changing, wake, the popup losing key | `NotificationCenter`, queue `.main` | main | |
+| Test hooks, debug builds only | `DistributedNotificationCenter`, queue `.main` | main | seen |
+| Power sources | `IOPSNotificationCreateRunLoopSource` on the main run loop | main | |
+| The primary interface and services | `SCDynamicStore` run loop source on the main run loop | main | |
+| Wi-Fi power, link and link quality | `CWEventDelegate` | CoreWLAN's `com.apple.wifi.xpcclient.event.<UUID>` queue | seen |
+| Audio devices, defaults, volumes, mutes, running | `AudioObjectAddPropertyListenerBlock` on the main queue | main | |
+| Bluetooth's state | `CBCentralManager`, queue `.main` | main | seen |
+| A Bluetooth device connecting | IOBluetooth's connect notification | `com.apple.bluetooth.iobluetooth.coordinatorQueue` | seen, and in the crash report |
+| A Bluetooth device disconnecting, a connection the panel opened completing | IOBluetooth | unknown, taken as any | |
+| Location Services' answer | `CLLocationManagerDelegate`, the manager made on the main thread | main | seen |
+| system_profiler, Wi-Fi scans and actions, samples, the speed test | ZenithBar's own queues | those queues | seen |
+
+## 5. Open questions
 
 - What WindowServer spends on an update of one panel, and whether keeping items from moving
   cuts it, which needs a quieter WindowServer than Steve's three displays in use give, or a

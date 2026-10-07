@@ -145,6 +145,9 @@ costs it 0.5 ms a second more.
 - **Place:** from the bar's right end, the calendar, the battery, the network, then the
   volume, the native menu bar's order with the network in Wi-Fi's place.
 - **Panel:** a left click opens the network panel (section 6).
+- **Module** (`NetworkModule`, `Sources/zenithbar/NetworkModule.swift`): draws the item from
+  `Network`'s route, opens the panel, and reads `Network` again after a wake
+  ([overview.md](overview.md), modules).
 
 ## 6. The panel
 
@@ -271,7 +274,8 @@ again when its height changes. Not NSPopover or NSMenu, whose material the theme
 color ([plugins.md](plugins.md)).
 
 Without a pointer, `zenithbar-probe send <command>` drives a debug build's panels through a
-distributed notification it watches (`Controller.watchTestHooks`): `open network`, `close`,
+distributed notification it watches (`Controller.watchTestHooks`, which hands the `network`
+ones to `NetworkModule.test`): `open network`, `close`,
 `network speedtest`, `network allow` and `network password <name>`. Release builds, which
 `script/install.sh` installs, leave the observer out, as any local process can post the
 notification unauthenticated. The captures above came from `open network` and

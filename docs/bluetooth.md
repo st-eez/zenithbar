@@ -126,7 +126,10 @@ connected.
 - **Left out,** Steve's choice: scanning, pairing and Forget, which System Settings does.
 - **Look:** 380 pt wide, built from PanelKit's labels, switch, rows, lists and dividers, as the
   sound panel ([network.md](network.md), the pieces).
-- **Test hooks,** debug builds only (`Controller.watchTestHooks`): `open bluetooth`, `close`,
+- **Module** (`BluetoothModule`, `Sources/zenithbar/BluetoothModule.swift`): the item and its
+  panel, from `Bluetooth`'s state ([overview.md](overview.md), modules).
+- **Test hooks,** debug builds only (`Controller.watchTestHooks`, and `BluetoothModule.test` for
+  `bluetooth`): `open bluetooth`, `close`,
   and `bluetooth connected <percent> <name>`, which draws a paired device connected until the
   next read, for captures without connecting it. The panel was captured from a debug build on
   2026-10-07 with the AirPods and the MX Master drawn connected.
