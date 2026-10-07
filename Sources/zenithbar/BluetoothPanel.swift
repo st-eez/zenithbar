@@ -3,7 +3,7 @@ import ZenithBarCore
 
 /// The Bluetooth panel, after Omarchy 4's (docs/bluetooth.md, the panel): a header with the
 /// item's glyph, "Bluetooth", Omarchy's rotating caption and the power switch; then CONNECTED,
-/// whose rows disconnect on a click, and AVAILABLE, the paired devices not connected, whose rows
+/// whose rows disconnect on a click, and MY DEVICES, the paired devices not connected, whose rows
 /// connect. It shows `Bluetooth`'s state, which its events keep current whether or not it is
 /// open; only the caption's phrases run while it is open.
 @MainActor final class BluetoothPanel: FlippedView {
