@@ -225,11 +225,12 @@ import ZenithCore
     /// ink to center on `first`'s figures, as a pill's app glyphs on its number.
     private func joined(_ first: NSAttributedString, _ second: NSAttributedString, gap: CGFloat,
                         centered: Bool = false) -> NSAttributedString {
+        guard first.length > 0 else { return second }
         let after = first.size().width - inkBounds(first).maxX
         let text = NSMutableAttributedString(attributedString: first)
         text.addAttribute(.kern, value: gap - after - inkBounds(second).minX, range: NSRange(location: text.length - 1, length: 1))
         let tail = NSMutableAttributedString(attributedString: second)
-        if centered, let font = first.attribute(.font, at: 0, effectiveRange: nil) as? NSFont {
+        if centered, let font = first.firstFont {
             tail.addAttribute(.baselineOffset, value: font.capHeight / 2 - inkBounds(second).midY,
                               range: NSRange(location: 0, length: tail.length))
         }

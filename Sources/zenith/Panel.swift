@@ -175,7 +175,7 @@ private final class PopupView: NSView {
     /// items. In a flipped view AppKit draws a line's top at the point, its ascender above the
     /// baseline.
     private func draw(_ text: NSAttributedString, x: CGFloat, top: CGFloat, height: CGFloat) {
-        guard let font = text.attribute(.font, at: 0, effectiveRange: nil) as? NSFont else { return }
+        guard let font = text.firstFont else { return }
         text.draw(at: NSPoint(x: x, y: (top + height / 2 + font.capHeight / 2 - font.ascender).rounded()))
     }
 }

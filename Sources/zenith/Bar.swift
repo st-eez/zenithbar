@@ -57,7 +57,7 @@ struct Item: Equatable {
     func bottom(height: CGFloat) -> CGFloat {
         guard case let .text(text) = content else { return (height - size.height) / 2 }
         let middle = switch center {
-        case .figures: ((text.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.capHeight ?? 0) / 2
+        case .figures: (text.firstFont?.capHeight ?? 0) / 2
         case .ink: inkBounds(text).midY
         }
         // AppKit puts the baseline the line's descent above where it draws.
@@ -68,6 +68,11 @@ struct Item: Equatable {
 /// The ink of `text`'s glyphs, from its origin with y up from its baseline.
 func inkBounds(_ text: NSAttributedString) -> CGRect {
     CTLineGetBoundsWithOptions(CTLineCreateWithAttributedString(text), .useGlyphPathBounds)
+}
+
+extension NSAttributedString {
+    /// The font of the first character, nil for empty text, as a plugin's blank detail.
+    var firstFont: NSFont? { length > 0 ? attribute(.font, at: 0, effectiveRange: nil) as? NSFont : nil }
 }
 
 private func descent(_ text: NSAttributedString) -> CGFloat {
