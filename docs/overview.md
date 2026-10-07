@@ -98,7 +98,9 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   the battery on IOKit's power source notifications, and the volume on CoreAudio's
   listeners for the default output device's volume and mute, following a new default
   device. A click on the volume toggles mute through CoreAudio, and on the front app opens
-  Mission Control.
+  Mission Control. An output without a volume or a mute property, as Steve's VG279QE5A
+  monitors, whose level is set on the monitor, shows the full speaker, and a click does
+  nothing there without mute.
 - **Look:** the fonts, sizes, paddings and colors of Steve's SketchyBar config of
   2026-10-06, and its app glyph map, copied into `AppIcons.swift`. Colors come from
   `~/.config/zenith/theme.json` (`Theme`), Tokyo Night without it. Steve's dotfiles theme
