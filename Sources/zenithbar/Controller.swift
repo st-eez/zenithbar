@@ -3,7 +3,7 @@ import ZenithBarCore
 import ZenithBarKit
 
 /// Holds what the bars show, and redraws them on each change: Kosmos's state, the clock,
-/// the battery, the network, the volume, the plugins' items and the hovered item.
+/// the battery, the network, the sound, the plugins' items and the hovered item.
 @MainActor final class Controller {
     private var bars: [CGDirectDisplayID: Bar] = [:]
     /// Each screen's UUID, which Kosmos's snapshot names its displays by.
@@ -13,7 +13,9 @@ import ZenithBarKit
     private var config = Config()
     private var settingsWatches: [DispatchSourceFileSystemObject] = []
     private var battery = Battery.read()
-    private var volume: Volume!
+    private var sound: Sound!
+    /// Scroll steps carried between events, for the speaker and the microphone.
+    private var scrolls: [String: ScrollSteps] = [:]
     private var network: Network!
     private var hovered: (key: String, display: CGDirectDisplayID)?
     private var clock: Timer?
@@ -35,6 +37,13 @@ import ZenithBarKit
                            pointerMayHaveLeft: { [weak self] in self?.pointerMayHaveLeft() })
         return panel
     }()
+    private lazy var soundPanel: SoundPanel = {
+        let panel = SoundPanel(sound: sound)
+        panel.resized = { [weak self] in self?.popup.fit() }
+        return panel
+    }()
+    /// The sound panel opens under the speaker or the microphone, whichever opened it.
+    private var soundShown: Bool { popup.shown.map { ["volume", "mic"].contains($0.key) } ?? false }
 
     func start() {
         guard kosmos.start() else {
@@ -43,7 +52,11 @@ import ZenithBarKit
         }
         readSettings()
         watchSettings()
-        volume = Volume { [weak self] in self?.render() }
+        sound = Sound { [weak self] in
+            guard let self else { return }
+            render()
+            if soundShown { soundPanel.update() }
+        }
         network = Network { [weak self] glyph in
             guard let self else { return }
             if glyph { render() }
@@ -59,7 +72,7 @@ import ZenithBarKit
                                                           queue: .main) { _ in
             MainActor.assumeIsolated {
                 self.battery = Battery.read()
-                self.volume.read()
+                self.sound.read()
                 self.network.read()
                 self.tick()
                 self.kosmos.refresh()
@@ -68,12 +81,16 @@ import ZenithBarKit
         }
         placeBars()
         tick()
+        logLocationAuthorization()
         #if DEBUG
         watchTestHooks()
         #endif
     }
 
     #if DEBUG
+    /// The microphone item as a test hook draws it.
+    private var micShown: MicState?
+
     /// In debug builds only, as any local process can post the notification: commands for
     /// testing panels without the pointer, posted as a distributed notification
     /// `io.github.st-eez.zenithbar.test` whose object is the command, as `zenithbar-probe send`
@@ -95,6 +112,9 @@ import ZenithBarKit
                 case ("network", "speedtest"): self.networkPanel.pressSpeedTest()
                 case ("network", "allow"): self.networkPanel.pressAllow()
                 case ("network", "password"): if words.count > 2 { self.networkPanel.pressPassword(words[2]) }
+                case ("mic", let state?):
+                    self.micShown = ["live": .live, "muted": .muted, "off": .hidden][state]
+                    self.render()
                 default: log.error("Unknown test hook \(words.joined(separator: " "), privacy: .public)")
                 }
             }
@@ -121,7 +141,7 @@ import ZenithBarKit
             popup.close()
         }
         // In the new theme's colors.
-        if let shown = popup.shown, shown.key == "network" { openPopup("network", display: shown.display) }
+        if let shown = popup.shown, ["network", "volume", "mic"].contains(shown.key) { openPopup(shown.key, display: shown.display) }
     }
 
     /// Reads the settings again when their folder changes, as when an editor saves by
@@ -236,8 +256,9 @@ import ZenithBarKit
         return items
     }
 
-    /// From the bar's right end inward: the calendar, the battery, the network, the volume,
-    /// then the plugins' items, the system items in the native menu bar's order.
+    /// From the bar's right end inward: the calendar, the battery, the network, the volume, the
+    /// microphone while it shows, then the plugins' items, the system items in the native menu
+    /// bar's order.
     private func rightItems(scale: CGFloat) -> [(key: String, item: Item)] {
         var items: [(key: String, item: Item)] = []
         let (date, time) = clockText(Date())
@@ -252,10 +273,20 @@ import ZenithBarKit
         if let (image, size, ink) = networkImage(route.icon, color: route.dim ? theme.dim : theme.foreground, scale: scale) {
             items.append(("network", Item(content: .image(image, size: size, ink: ink))))
         }
-        let speaker = volumeSymbol(volume.level, muted: volume.muted)
+        let output = sound.state.defaultDevice(.output)
+        let speaker = outputSymbol(output, bluetooth: output.flatMap { sound.bluetooth(for: $0) })
         if let (image, size, ink) = symbolImage(speaker.name, key: "volume", color: speaker.dim ? theme.dim : theme.foreground,
                                                 scale: scale) {
             items.append(("volume", Item(content: .image(image, size: size, ink: ink))))
+        }
+        var micState = sound.state.mic
+        #if DEBUG
+        micState = micShown ?? micState
+        #endif
+        if let mic = micState.symbol,
+           let (image, size, ink) = symbolImage(mic.name, key: "mic", color: mic.alert ? theme.alert : theme.foreground,
+                                                scale: scale) {
+            items.append(("mic", Item(content: .image(image, size: size, ink: ink))))
         }
         for (key, item) in pluginItems where !item.hidden {
             let color = item.alert ? theme.alert : theme.foreground
@@ -309,7 +340,7 @@ import ZenithBarKit
         var color: RGBA
     }
 
-    /// Each item's symbol, the volume's and plugins', at each display scale, drawn again only
+    /// Each item's symbol, the volume's, the microphone's and plugins', at each display scale, drawn again only
     /// when it changes, as the battery's image is.
     private var symbolImages: [String: (key: SymbolDrawing, image: (CGImage, CGSize, ClosedRange<CGFloat>))] = [:]
 
@@ -363,16 +394,31 @@ import ZenithBarKit
         if key.hasPrefix("plugin.") {
             return pluginClicked(key, button: button, display: display)
         }
+        switch (key, button) {
+        // Omarchy's speaker: a left or middle click opens the panel, a right click mutes.
+        case ("volume", .left), ("volume", .middle), ("mic", .middle):
+            return popup.shown?.key == key ? popup.close() : openPopup(key, display: display)
+        case ("volume", .right): return sound.toggleOutputMute()
+        // Omarchy's microphone: a left click mutes.
+        case ("mic", .left): return sound.toggleMic()
+        default: break
+        }
         guard button == .left else { return }
         if key.hasPrefix("space.") {
             kosmos.send(["workspace", String(key.dropFirst(6))])
         } else if key == "front" {
             NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Mission Control.app"))
-        } else if key == "volume" {
-            volume.toggleMute()
         } else if key == "network" {
             if popup.shown?.key == key { popup.close() } else { openPopup(key, display: display) }
         }
+    }
+
+    /// A scroll on the speaker or the microphone steps its level by 5%, as Omarchy's do.
+    func scrolled(_ key: String, delta: Double, precise: Bool, momentum: Bool) {
+        guard key == "volume" || key == "mic" else { return }
+        let steps = scrolls[key, default: ScrollSteps()].steps(delta: delta, precise: precise, momentum: momentum)
+        guard steps != 0 else { return }
+        if key == "volume" { sound.stepOutput(steps) } else { sound.stepInput(steps) }
     }
 
     func hover(_ key: String?, display: CGDirectDisplayID) {
@@ -399,6 +445,7 @@ import ZenithBarKit
 
     private func openPopup(_ key: String, display: CGDirectDisplayID) {
         if key == "network" { return openNetwork(display: display) }
+        if key == "volume" || key == "mic" { return openSound(key, display: display) }
         guard let item = pluginItems.first(where: { $0.key == key })?.item,
               !item.hidden, !item.pages.isEmpty,
               let bar = bars[display], let frame = bar.frames[key],
@@ -418,6 +465,15 @@ import ZenithBarKit
                    anchor: frame.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY), screen: screen.frame,
                    theme: theme, closed: { [weak self] in self?.networkPanel.close() })
         networkPanel.open()
+    }
+
+    private func openSound(_ key: String, display: CGDirectDisplayID) {
+        guard let bar = bars[display], let frame = bar.frames[key],
+              let screen = NSScreen.screens.first(where: { $0.displayID == display }) else { return popup.close() }
+        soundPanel.theme = theme
+        soundPanel.update()
+        popup.show(soundPanel, key: key, display: display,
+                   anchor: frame.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY), screen: screen.frame, theme: theme)
     }
 
     private func select(page: Int) {
@@ -478,6 +534,13 @@ final class BarView: NSView {
         if let key = key(event) { controller.clicked(key, button: button, display: display) }
     }
     override func mouseMoved(with event: NSEvent) { controller.hover(key(event), display: display) }
+
+    /// Up is louder whichever way the system scrolls, as the hand moved.
+    override func scrollWheel(with event: NSEvent) {
+        guard let key = key(event) else { return }
+        let delta = Double(event.isDirectionInvertedFromDevice ? -event.scrollingDeltaY : event.scrollingDeltaY)
+        controller.scrolled(key, delta: delta, precise: event.hasPreciseScrollingDeltas, momentum: event.momentumPhase != [])
+    }
     override func mouseExited(with event: NSEvent) { controller.hover(nil, display: display) }
 }
 

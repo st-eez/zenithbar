@@ -1,6 +1,4 @@
 import AppKit
-import AudioToolbox
-import CoreAudio
 import IOKit.ps
 
 /// The internal battery's charge and whether it is on AC power, nil without a battery.
@@ -85,74 +83,3 @@ struct Battery: Hashable {
 }
 
 @MainActor private var batteryChanged: (@MainActor () -> Void)?
-
-/// The default output device's volume and mute, read and watched through CoreAudio. A device
-/// may have neither, as Steve's VG279QE5A monitors, whose level is set on the monitor
-/// (AudioObjectHasProperty false for both, 2026-10-06); it shows full and unmuted.
-@MainActor final class Volume {
-    private(set) var level = 1.0
-    private(set) var muted = false
-    private var device = AudioObjectID(kAudioObjectUnknown)
-    private var hasLevel = false, hasMute = false
-    private let changed: @MainActor () -> Void
-    private lazy var listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
-        Task { @MainActor in self?.read() }
-    }
-
-    init(changed: @escaping @MainActor () -> Void) {
-        self.changed = changed
-        var defaultDevice = Self.address(kAudioHardwarePropertyDefaultOutputDevice, scope: kAudioObjectPropertyScopeGlobal)
-        AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &defaultDevice, .main) { [weak self] _, _ in
-            MainActor.assumeIsolated { self?.attach() }
-        }
-        attach()
-    }
-
-    /// Follows the default output device, as when headphones connect.
-    private func attach() {
-        for selector in [kAudioHardwareServiceDeviceProperty_VirtualMainVolume, kAudioDevicePropertyMute] {
-            var address = Self.address(selector)
-            AudioObjectRemovePropertyListenerBlock(device, &address, nil, listener)
-        }
-        var address = Self.address(kAudioHardwarePropertyDefaultOutputDevice, scope: kAudioObjectPropertyScopeGlobal)
-        var size = UInt32(MemoryLayout<AudioObjectID>.size)
-        AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device)
-        var levelAddress = Self.address(kAudioHardwareServiceDeviceProperty_VirtualMainVolume)
-        var muteAddress = Self.address(kAudioDevicePropertyMute)
-        hasLevel = AudioObjectHasProperty(device, &levelAddress)
-        hasMute = AudioObjectHasProperty(device, &muteAddress)
-        if hasLevel { AudioObjectAddPropertyListenerBlock(device, &levelAddress, nil, listener) }
-        if hasMute { AudioObjectAddPropertyListenerBlock(device, &muteAddress, nil, listener) }
-        read()
-    }
-
-    func read() {
-        var volume = Float32(1), mute = UInt32(0)
-        if hasLevel {
-            var size = UInt32(MemoryLayout<Float32>.size)
-            var address = Self.address(kAudioHardwareServiceDeviceProperty_VirtualMainVolume)
-            AudioObjectGetPropertyData(device, &address, 0, nil, &size, &volume)
-        }
-        if hasMute {
-            var size = UInt32(MemoryLayout<UInt32>.size)
-            var address = Self.address(kAudioDevicePropertyMute)
-            AudioObjectGetPropertyData(device, &address, 0, nil, &size, &mute)
-        }
-        let next = (Double(volume), mute != 0)
-        guard next != (level, muted) else { return }
-        (level, muted) = next
-        changed()
-    }
-
-    func toggleMute() {
-        guard hasMute else { return }
-        var mute = UInt32(muted ? 0 : 1)
-        var address = Self.address(kAudioDevicePropertyMute)
-        AudioObjectSetPropertyData(device, &address, 0, nil, UInt32(MemoryLayout<UInt32>.size), &mute)
-    }
-
-    private static func address(_ selector: AudioObjectPropertySelector,
-                                scope: AudioObjectPropertyScope = kAudioDevicePropertyScopeOutput) -> AudioObjectPropertyAddress {
-        AudioObjectPropertyAddress(mSelector: selector, mScope: scope, mElement: kAudioObjectPropertyElementMain)
-    }
-}

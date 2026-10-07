@@ -1,8 +1,8 @@
 import AppKit
 import ZenithBarCore
 
-// The pieces the bar's interactive panels are built from: labels, buttons, a switch, rows, a
-// scrolling list and a password field, drawn in the theme's colors and the bar's fonts, solid,
+// The pieces the bar's interactive panels are built from: labels, buttons, a switch, a slider,
+// rows, a scrolling list and a password field, drawn in the theme's colors and the bar's fonts, solid,
 // as the plugin panel is (docs/plugins.md, docs/network.md, the panel). Every control takes
 // the first click, as the panel is never active (docs/overview.md, clicks).
 
@@ -209,6 +209,87 @@ final class PanelSwitch: PanelControl {
         (isOn ? theme.background.nsColor : theme.foreground.nsColor).setFill()
         NSBezierPath(ovalIn: NSRect(x: isOn ? track.maxX - 2 - knob : track.minX + 2, y: track.minY + 2, width: knob,
                                     height: knob)).fill()
+    }
+}
+
+/// A slider from 0 to 1, after Omarchy's `PanelSlider`: a track filled to the value in the
+/// foreground and a round knob, which a click or a drag moves. `moved` is called at each step
+/// of a drag. While dragging, the knob follows the pointer alone: a `value` set meanwhile, as the
+/// listener's echo of the change, is kept for after, so the knob does not jump back
+/// (docs/sound.md, the panel).
+final class PanelSlider: PanelControl {
+    var value = 0.0 { didSet { if value != oldValue, dragged == nil { needsDisplay = true } } }
+    /// Drawn at half strength, as a muted channel's.
+    var dimmed = false { didSet { if dimmed != oldValue { needsDisplay = true } } }
+    var moved: ((Double) -> Void)?
+    var rightClicked: (() -> Void)?
+    /// The value under the pointer while dragging.
+    private(set) var dragged: Double?
+    var shown: Double { dragged ?? value }
+    static let knob: CGFloat = 14
+
+    private var track: NSRect {
+        // Inset for the knob at either end, grown on hover and with its border.
+        NSRect(x: 10, y: (bounds.height - 4) / 2, width: max(1, bounds.width - 20), height: 4)
+    }
+
+    private func value(at event: NSEvent) -> Double {
+        let x = convert(event.locationInWindow, from: nil).x
+        return min(1, max(0, Double((x - track.minX) / track.width)))
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard isEnabled else { return }
+        drag(to: value(at: event))
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard isEnabled, dragged != nil else { return }
+        drag(to: value(at: event))
+    }
+
+    /// Keeps the last dragged value as the value, for the moment until the listener reads it back.
+    override func mouseUp(with event: NSEvent) {
+        guard let dragged else { return }
+        self.dragged = nil
+        value = dragged
+        needsDisplay = true
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        if isEnabled { rightClicked?() }
+    }
+
+    /// Ends a drag without a release, as when the device it moves goes.
+    func cancelDrag() {
+        dragged = nil
+        needsDisplay = true
+    }
+
+    private func drag(to next: Double) {
+        guard next != dragged else { return }
+        dragged = next
+        needsDisplay = true
+        moved?(next)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let strength = !isEnabled ? 0.35 : dimmed ? 0.5 : 1
+        let track = self.track
+        theme.foreground.with(alpha: 0.18).nsColor.setFill()
+        NSBezierPath(roundedRect: track, xRadius: 2, yRadius: 2).fill()
+        guard isEnabled else { return }
+        let x = track.minX + track.width * shown
+        theme.foreground.with(alpha: strength).nsColor.setFill()
+        NSBezierPath(roundedRect: NSRect(x: track.minX, y: track.minY, width: x - track.minX, height: track.height), xRadius: 2,
+                     yRadius: 2).fill()
+        let size = Self.knob * (hovered || dragged != nil ? 1.15 : 1)
+        let knob = NSBezierPath(ovalIn: NSRect(x: x - size / 2, y: (bounds.height - size) / 2, width: size, height: size))
+        theme.foreground.with(alpha: strength).nsColor.setFill()
+        knob.fill()
+        theme.background.nsColor.setStroke()
+        knob.lineWidth = 2
+        knob.stroke()
     }
 }
 

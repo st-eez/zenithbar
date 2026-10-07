@@ -124,6 +124,13 @@ import ZenithBarKit
     }
 }
 
+/// Logs Location Services' answer at launch, 3 when allowed and 0 when nobody was asked, so the
+/// log shows whether the grant survived `script/install.sh` replacing the app (docs/network.md,
+/// the network's name). Reading it asks nothing of Steve.
+@MainActor func logLocationAuthorization() {
+    log.notice("Location Services authorization at launch: \(CLLocationManager().authorizationStatus.rawValue)")
+}
+
 /// Location Services' answer for ZenithBar, which airportd asks before it gives networks'
 /// names (docs/network.md, the network's name).
 @MainActor private final class Locator: NSObject, @preconcurrency CLLocationManagerDelegate {
