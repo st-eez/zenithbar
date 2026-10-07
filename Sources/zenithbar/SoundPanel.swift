@@ -3,7 +3,7 @@ import CoreAudio
 import ZenithBarCore
 
 /// The sound panel, after Omarchy 4's audio panel (docs/sound.md, the panel): a header with the
-/// output's icon, "Audio", the volume's name and a switch that mutes everything; then OUTPUT and
+/// output's icon, "Audio", the volume's name and a switch, labelled SOUND & MIC, that mutes both; then OUTPUT and
 /// INPUT, each with its level, a slider and every device, the default one highlighted, which a
 /// click makes the default. It shows `Sound`'s state, which CoreAudio's listeners keep current
 /// whether or not it is open, so it follows the volume keys, System Settings and other apps.
@@ -19,6 +19,8 @@ import ZenithBarCore
     private let title = PanelLabel(size: 14, bold: true)
     private let caption = PanelLabel(size: 9.5, bold: true)
     private let master = PanelSwitch()
+    /// Says what the switch mutes, as on its own it read as a mystery (Steve, 2026-10-07).
+    private let masterLabel = PanelLabel(size: 9.5, bold: true, alignment: .right)
     private let sections: [Section]
     private let dividers = [PanelDivider(), PanelDivider()]
 
@@ -49,7 +51,7 @@ import ZenithBarCore
         self.sound = sound
         sections = [Section(.output), Section(.input)]
         super.init(frame: NSRect(x: 0, y: 0, width: Self.width, height: 100))
-        for view in [icon, title, caption, master] + dividers as [NSView] { addSubview(view) }
+        for view in [icon, title, caption, master, masterLabel] + dividers as [NSView] { addSubview(view) }
         for section in sections {
             for view in [section.caption, section.percent, section.slider, section.list] as [NSView] { addSubview(view) }
             section.slider.moved = { [weak self, unowned section] value in self?.moved(section, to: value) }
@@ -109,7 +111,11 @@ import ZenithBarCore
         icon.frame = NSRect(x: pad, y: y + 4, width: 32, height: 32)
         master.isOn = state.switchOn
         master.frame = NSRect(x: width - pad - 36, y: y + 8, width: 36, height: 24)
-        let textX = pad + 32 + 14, textWidth = width - pad - 36 - 12 - textX
+        masterLabel.set("SOUND & MIC", color: theme.dim.nsColor, kern: 1.2)
+        let labelWidth: CGFloat = 96
+        masterLabel.frame = NSRect(x: master.frame.minX - 8 - labelWidth, y: master.frame.midY - masterLabel.lineHeight / 2,
+                                   width: labelWidth, height: masterLabel.lineHeight)
+        let textX = pad + 32 + 14, textWidth = masterLabel.frame.minX - 8 - textX
         title.set("Audio", color: theme.foreground.nsColor)
         title.frame = NSRect(x: textX, y: y + 1, width: textWidth, height: title.lineHeight)
         caption.set(outputVolumeName(shownVolume, muted: muted).uppercased(), color: theme.dim.nsColor, kern: 1.2)
