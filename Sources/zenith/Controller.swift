@@ -342,6 +342,7 @@ import ZenithKit
         var icon: NSImage?
         if key == "network", case let .symbol(name, value) = networkIcon(network.route).icon {
             icon = symbol(name, value: value, pointSize: 13, color: theme.accent.nsColor)
+                .flatMap { inkImage($0, scale: screen.backingScaleFactor) }.map { NSImage(cgImage: $0.0, size: $0.1) }
         }
         popup.show(item, page: min(pages[key] ?? 0, item.pages.count - 1), key: key, display: display, anchor: anchor,
                    screen: screen.frame, theme: theme, icon: icon)

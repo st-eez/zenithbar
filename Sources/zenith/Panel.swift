@@ -29,7 +29,8 @@ import ZenithKit
 
     /// Shows `page` of `item` under `anchor`, the item's frame on screen, its right edge on the
     /// item's and kept on `screen`.
-    /// `icon`, when given, shows in place of the item's glyph, as the network's SF Symbol.
+    /// `icon`, when given, shows in place of the item's glyph, as the network's SF Symbol, a
+    /// bitmap cropped to its ink (`inkImage`), as a symbol drawn into a rect of its size stretches.
     func show(_ item: PluginItem, page: Int, key: String, display: CGDirectDisplayID, anchor: NSRect, screen: NSRect,
               theme: Theme, icon: NSImage? = nil) {
         view.item = item
