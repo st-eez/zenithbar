@@ -53,14 +53,18 @@ import ZenithBarKit
         }
     }
 
-    @objc private func connected(_ notification: IOBluetoothUserNotification, device: IOBluetoothDevice) {
+    // IOBluetooth calls these three on CoreBluetooth's queue when a connection comes from
+    // outside ZenithBar, as AirPods connecting from their case, not on the main thread; a
+    // main-actor method there trapped at launch with AirPods connected (2026-10-07). So they
+    // are nonisolated and hop to the main thread.
+    @objc private nonisolated func connected(_ notification: IOBluetoothUserNotification, device: IOBluetoothDevice) {
         device.register(forDisconnectNotification: self, selector: #selector(disconnected(_:device:)))
-        readTwice()
+        DispatchQueue.main.async { MainActor.assumeIsolated { self.readTwice() } }
     }
 
-    @objc private func disconnected(_ notification: IOBluetoothUserNotification, device: IOBluetoothDevice) {
+    @objc private nonisolated func disconnected(_ notification: IOBluetoothUserNotification, device: IOBluetoothDevice) {
         notification.unregister()
-        readTwice()
+        DispatchQueue.main.async { MainActor.assumeIsolated { self.readTwice() } }
     }
 
     // MARK: reads
@@ -131,9 +135,14 @@ import ZenithBarKit
         if status != kIOReturnSuccess { failed(address, "connect", status) }
     }
 
-    @objc private func connectionComplete(_ device: IOBluetoothDevice, status: IOReturn) {
-        if status != kIOReturnSuccess, let address = device.addressString { failed(address, "connect", status) }
-        readTwice()
+    @objc private nonisolated func connectionComplete(_ device: IOBluetoothDevice, status: IOReturn) {
+        let address = device.addressString
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                if status != kIOReturnSuccess, let address { self.failed(address, "connect", status) }
+                self.readTwice()
+            }
+        }
     }
 
     func disconnect(_ address: String) {
