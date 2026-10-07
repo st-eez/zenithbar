@@ -1,14 +1,13 @@
 import AppKit
-import CZenith
 import ZenithCore
 
 /// Holds what the bars show, and redraws them on each change: Kosmos's state, the clock,
 /// the battery, the volume and the hovered item.
 @MainActor final class Controller {
     private var bars: [CGDirectDisplayID: Bar] = [:]
-    /// Kosmos's number for each display (docs/overview.md).
-    private var numbers: [CGDirectDisplayID: Int] = [:]
-    private var rows: [Int: WorkspaceRow] = [:]
+    /// Each screen's UUID, which Kosmos's snapshot names its displays by.
+    private var uuids: [CGDirectDisplayID: String] = [:]
+    private var rows: [String: WorkspaceRow] = [:]
     private var theme = Theme.fallback
     private var config = Config()
     private var settingsWatches: [DispatchSourceFileSystemObject] = []
@@ -105,15 +104,13 @@ import ZenithCore
         clock = timer
     }
 
-    /// A bar for each screen, numbered as Kosmos numbers displays.
+    /// A bar for each screen.
     private func placeBars() {
         let screens = NSScreen.screens
-        let managed = (SLSCopyManagedDisplays(SLSMainConnectionID())?.takeRetainedValue() as? [String]) ?? []
-        numbers = [:]
+        uuids = [:]
         for screen in screens {
             let id = screen.displayID
-            let uuid = CGDisplayCreateUUIDFromDisplayID(id).map { CFUUIDCreateString(nil, $0.takeRetainedValue()) as String }
-            numbers[id] = displayNumber(uuid: uuid ?? "", active: screens.count, managed: managed)
+            uuids[id] = CGDisplayCreateUUIDFromDisplayID(id).map { CFUUIDCreateString(nil, $0.takeRetainedValue()) as String }
             if let bar = bars[id] { bar.move(to: screen) } else { bars[id] = Bar(screen: screen, view: BarView(controller: self, display: id)) }
         }
         for (id, bar) in bars where !screens.contains(where: { $0.displayID == id }) {
@@ -126,7 +123,7 @@ import ZenithCore
     private func render() {
         for (id, bar) in bars {
             let scale = NSScreen.screens.first { $0.displayID == id }?.backingScaleFactor ?? 2
-            bar.show(left: leftItems(numbers[id].flatMap { rows[$0] }), right: rightItems(scale: scale),
+            bar.show(left: leftItems(uuids[id].flatMap { rows[$0] }), right: rightItems(scale: scale),
                      style: config.style, background: theme.background.cgColor, scale: scale)
         }
     }

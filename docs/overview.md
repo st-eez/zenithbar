@@ -90,9 +90,10 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
 - **Kosmos** (`KosmosLink`): Kosmos pushes its snapshot (Kosmos's docs/ipc.md) as JSON to
   the Mach port Zenith registers as `io.github.st-eez.zenith`, and Zenith reads only the
   newest of those waiting. At launch and after a wake Zenith asks for `state`, and a click
-  on a workspace sends `workspace <name>`, each as one request on Kosmos's socket. Kosmos
-  numbers displays as SketchyBar does, and Zenith numbers its screens the same way from
-  `SLSCopyManagedDisplays` (`displayNumber`).
+  on a workspace sends `workspace <name>`, each as one request on Kosmos's socket. Kosmos's
+  snapshot names each display's CoreGraphics UUID, since Kosmos 638151c, and Zenith matches
+  its screens by it; before, Zenith copied Kosmos's SketchyBar numbering, and the two
+  counted active displays differently.
 - **The other items:** the clock redraws at each minute's start on a timer set for it,
   the battery on IOKit's power source notifications, and the volume on CoreAudio's
   listeners for the default output device's volume and mute, following a new default

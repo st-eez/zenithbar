@@ -7,8 +7,11 @@ public struct KosmosState: Decodable, Equatable, Sendable {
     // reject a snapshot.
 
     public struct Display: Decodable, Equatable, Sendable {
-        /// SketchyBar's number for the display, which `displayNumber` gives Zenith's screens.
+        /// Kosmos's number for the display, which its workspaces name.
         public var id: Int
+        /// CoreGraphics' UUID for the display, which Zenith matches its screens by; nil from a
+        /// Kosmos before 638151c, or when CoreGraphics gives none.
+        public var uuid: String?
     }
 
     public struct Window: Decodable, Equatable, Sendable {
@@ -44,13 +47,4 @@ public struct KosmosState: Decodable, Equatable, Sendable {
         guard (try? JSONDecoder().decode(Versioned.self, from: data))?.version == version else { return nil }
         return try? JSONDecoder().decode(KosmosState.self, from: data)
     }
-}
-
-/// The number Kosmos gives the display `uuid` among `active` displays, SketchyBar's
-/// arrangement: 1 when one display is active, else its place in `managed`,
-/// SLSCopyManagedDisplays's list, from 1, and 0 when the list lacks it (Kosmos's
-/// docs/integrations.md).
-public func displayNumber(uuid: String, active: Int, managed: [String]) -> Int {
-    if active == 1 { return 1 }
-    return managed.firstIndex { $0.caseInsensitiveCompare(uuid) == .orderedSame }.map { $0 + 1 } ?? 0
 }

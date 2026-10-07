@@ -4,7 +4,7 @@ import Testing
 
 @Test func snapshotRowsFollowKosmos() throws {
     let json = """
-        {"version":1,"profile":"home","displays":[{"id":1,"name":"Built-in"},{"id":2,"name":"LG"}],
+        {"version":1,"profile":"home","displays":[{"id":1,"name":"Built-in","uuid":"B"},{"id":2,"name":"LG","uuid":"L"}],
          "workspaces":[
            {"name":"1","display":2,"shown":true,"focused":true,"windows":[{"id":5,"app":"Ghostty","x":0,"y":0},
                                                                           {"id":6,"app":"Nobody","x":900,"y":0}]},
@@ -15,30 +15,29 @@ import Testing
         """
     let state = try #require(KosmosState.decode(Data(json.utf8)))
     let rows = workspaceRows(state, icons: ["Ghostty": ":ghostty:", "Default": ":default:"])
-    #expect(rows[2]?.pills == [Pill(name: "1", glyphs: ":ghostty: :default:", emphasis: .focused),
-                               Pill(name: "2", glyphs: "", emphasis: .hidden)])
-    #expect(rows[2]?.frontApp == "Ghostty")
-    #expect(rows[1] == WorkspaceRow(pills: [Pill(name: "3", glyphs: "", emphasis: .shown)], frontApp: nil))
-    #expect(rows[0] == nil)
+    #expect(rows["L"]?.pills == [Pill(name: "1", glyphs: ":ghostty: :default:", emphasis: .focused),
+                                 Pill(name: "2", glyphs: "", emphasis: .hidden)])
+    #expect(rows["L"]?.frontApp == "Ghostty")
+    #expect(rows["B"] == WorkspaceRow(pills: [Pill(name: "3", glyphs: "", emphasis: .shown)], frontApp: nil))
+    #expect(rows.count == 2)
 }
 
 @Test func emptyFocusedWorkspaceShowsDesktop() throws {
     let json = """
-        {"version":1,"displays":[{"id":1,"name":"Built-in"}],
+        {"version":1,"displays":[{"id":1,"name":"Built-in","uuid":"B"}],
          "workspaces":[{"name":"4","display":1,"shown":true,"focused":true,"windows":[]}]}
         """
     let rows = workspaceRows(try #require(KosmosState.decode(Data(json.utf8))), icons: [:])
-    #expect(rows[1]?.frontApp == "Desktop")
+    #expect(rows["B"]?.frontApp == "Desktop")
 }
 
 @Test func otherVersionsAreIgnored() {
     #expect(KosmosState.decode(Data(#"{"version":2,"displays":[],"workspaces":[]}"#.utf8)) == nil)
 }
 
-@Test func displayNumbersMatchKosmos() {
-    #expect(displayNumber(uuid: "B", active: 1, managed: ["A", "B"]) == 1)
-    #expect(displayNumber(uuid: "b", active: 2, managed: ["A", "B"]) == 2)
-    #expect(displayNumber(uuid: "C", active: 2, managed: ["A", "B"]) == 0)
+@Test func displaysWithoutUUIDShowNothing() throws {
+    let json = #"{"version":1,"displays":[{"id":1,"name":"Old"}],"workspaces":[{"name":"1","display":1,"shown":true,"focused":true,"windows":[]}]}"#
+    #expect(workspaceRows(try #require(KosmosState.decode(Data(json.utf8))), icons: [:]).isEmpty)
 }
 
 @Test func clockReadsLikeSketchyBar() {
