@@ -23,11 +23,29 @@ private let airpodsMic = AudioDevice(id: 121, uid: "7C-1A-2B-3C-4D-03:input", na
                                      input: AudioSide(volume: 0.8, volumeSettable: true, muted: false, muteSettable: true))
 private let steve = SoundState(devices: [monitor, microphone, speakers, teams], defaultOutput: 82, defaultInput: 89)
 
-private func with(_ device: AudioDevice, running: Bool? = nil, inputMuted: Bool? = nil) -> AudioDevice {
+private let usbMic = AudioDevice(id: 150, uid: "AppleUSBAudioEngine:Blue:Yeti", name: "Yeti", transport: .usb,
+                                 input: AudioSide(volume: 0.7, volumeSettable: true, muted: false, muteSettable: true))
+
+private func with(_ device: AudioDevice, running: Bool? = nil, inputMuted: Bool? = nil, outputMuted: Bool? = nil) -> AudioDevice {
     var device = device
     if let running { device.running = running }
     if let inputMuted { device.input?.muted = inputMuted }
+    if let outputMuted { device.output?.muted = outputMuted }
     return device
+}
+
+/// `state` after `sides` are set to `mute`, as CoreAudio's listeners would read it back.
+private func applying(_ toggle: (mute: Bool, sides: [MuteSide]), to state: SoundState) -> SoundState {
+    var state = state
+    for side in toggle.sides {
+        guard let index = state.devices.firstIndex(where: { $0.id == side.device.id }) else { continue }
+        if side.direction == .output { state.devices[index].output?.muted = toggle.mute } else { state.devices[index].input?.muted = toggle.mute }
+    }
+    return state
+}
+
+private func sides(_ toggle: (mute: Bool, sides: [MuteSide])) -> [String] {
+    toggle.sides.map { "\($0.device.id) \($0.direction)" }
 }
 
 @Test func namesTheVolumeAsOmarchy() {
@@ -62,20 +80,51 @@ private func with(_ device: AudioDevice, running: Bool? = nil, inputMuted: Bool?
 }
 
 @Test func micShowsWhileAnyAppRunsAnInput() {
-    // Teams runs its own device, not the default one: both are targets, and the item is live.
-    let call = SoundState(devices: [microphone, speakers, with(teams, running: true)], defaultOutput: 82, defaultInput: 89)
+    // A USB microphone in use, not the default: both are targets, and the item is live.
+    let call = SoundState(devices: [microphone, speakers, with(usbMic, running: true)], defaultOutput: 82, defaultInput: 89)
     #expect(call.mic == .live)
     #expect(call.mic.symbol! == ("mic.fill", false))
-    #expect(Set(call.micTargets.map(\.id)) == [68, 89])
+    #expect(Set(call.micTargets.map(\.id)) == [150, 89])
     #expect(call.micToggle.mute)
-    #expect(Set(call.micToggle.devices) == [68, 89])
+    #expect(Set(call.micToggle.devices) == [150, 89])
     // The device in use muted elsewhere, as in System Settings: no app hears a microphone.
-    let mutedElsewhere = SoundState(devices: [microphone, speakers, with(teams, running: true, inputMuted: true)],
+    let mutedElsewhere = SoundState(devices: [microphone, speakers, with(usbMic, running: true, inputMuted: true)],
                                     defaultOutput: 82, defaultInput: 89)
     #expect(mutedElsewhere.mic == .muted)
     // Unmuting unmutes only what is muted.
     #expect(!mutedElsewhere.micToggle.mute)
-    #expect(mutedElsewhere.micToggle.devices == [68])
+    #expect(mutedElsewhere.micToggle.devices == [150])
+}
+
+@Test func teamsAudioRunningLeavesTheMicrophoneItemWorking() {
+    // Teams runs its virtual device, whose mute reads 0 whatever is written (docs/sound.md).
+    // Counted as a microphone in use, it held the item live, so each click muted again and none
+    // unmuted the MacBook Pro Microphone.
+    let call = SoundState(devices: [microphone, speakers, with(teams, running: true)], defaultOutput: 82, defaultInput: 89)
+    #expect(call.mic == .hidden)
+    #expect(call.micTargets.map(\.id) == [89])
+    #expect(call.micToggle == (true, [89]))
+    let muted = SoundState(devices: [with(microphone, inputMuted: true), speakers, with(teams, running: true)],
+                           defaultOutput: 82, defaultInput: 89)
+    #expect(muted.mic == .muted)
+    #expect(muted.micToggle == (false, [89]))
+}
+
+@Test func aMicrophoneMutedOutOfSightShowsAndUnmutes() {
+    // The MacBook Pro Microphone is muted, then AirPods connect and macOS makes their
+    // microphone the default input: it was hidden, as no target was muted, while the MacBook's
+    // stayed muted.
+    let pods = SoundState(devices: [with(microphone, inputMuted: true), speakers, airpods, with(airpodsMic, running: false)],
+                          defaultOutput: 120, defaultInput: 121)
+    #expect(pods.mic == .muted)
+    #expect(pods.micToggle == (false, [89]))
+    // A call on a USB microphone is muted with the default; the call ends, so the USB one is
+    // no longer in use: a click unmutes both, where it unmuted the default alone.
+    let ended = SoundState(devices: [with(microphone, inputMuted: true), speakers, with(usbMic, inputMuted: true)],
+                           defaultOutput: 82, defaultInput: 89)
+    #expect(ended.mic == .muted)
+    #expect(Set(ended.micToggle.devices) == [89, 150])
+    #expect(!ended.micToggle.mute)
 }
 
 @Test func micCopesWithAirPodsTakingACall() {
@@ -93,19 +142,106 @@ private func with(_ device: AudioDevice, running: Bool? = nil, inputMuted: Bool?
     #expect(outputSymbol(gone.defaultDevice(.output), bluetooth: nil) == ("speaker.wave.3.fill", false))
 }
 
-@Test func masterSwitchCountsOnlySidesWithAMute() {
-    #expect(steve.anyAudible)
-    let all = steve.masterToggle
-    #expect(all.mute && all.output == 82 && all.inputs == [89])
-    var quiet = steve
-    quiet.devices = [monitor, with(microphone, inputMuted: true), speakers, teams]
-    quiet.devices[2].output?.muted = true
-    #expect(!quiet.anyAudible)
-    #expect(quiet.masterToggle == (false, 82, [89]))
-    // On the monitor, without a mute, the switch follows the microphone alone.
-    let monitorOut = SoundState(devices: [monitor, with(microphone, inputMuted: true)], defaultOutput: 94, defaultInput: 89)
-    #expect(!monitorOut.anyAudible)
-    #expect(monitorOut.masterToggle.output == nil)
+@Test func switchFollowsTheOutputAndRestoresWhatItMuted() {
+    var muteSwitch = MuteSwitch()
+    #expect(steve.switchOn)
+    let off = muteSwitch.toggle(steve)
+    #expect(off.mute && sides(off) == ["82 output", "89 input"])
+    let quiet = applying(off, to: steve)
+    #expect(!quiet.switchOn)
+    let on = muteSwitch.toggle(quiet)
+    #expect(!on.mute && Set(sides(on)) == ["82 output", "89 input"])
+    #expect(applying(on, to: quiet) == steve)
+}
+
+@Test func switchReadsOffWhileTheOutputIsMuted() {
+    // Steve's clicks on 2026-10-07 18:38, from CoreAudio's log: with the speakers muted and the
+    // microphone unmuted, the switch read on, as the microphone was audible, and its click
+    // muted the microphone while the speakers stayed muted; the sound came back on the next.
+    var muteSwitch = MuteSwitch()
+    let speakersMuted = SoundState(devices: [monitor, microphone, with(speakers, outputMuted: true), teams],
+                                   defaultOutput: 82, defaultInput: 89)
+    #expect(!speakersMuted.switchOn)
+    let toggle = muteSwitch.toggle(speakersMuted)
+    #expect(!toggle.mute && sides(toggle) == ["82 output"])
+}
+
+@Test func switchLeavesAMicrophoneMutedOnItsOwn() {
+    // The microphone item muted the microphone; the switch mutes and unmutes the speakers alone.
+    var muteSwitch = MuteSwitch()
+    let micMuted = SoundState(devices: [monitor, with(microphone, inputMuted: true), speakers, teams],
+                              defaultOutput: 82, defaultInput: 89)
+    #expect(micMuted.switchOn)
+    let off = muteSwitch.toggle(micMuted)
+    #expect(off.mute && sides(off) == ["82 output"])
+    let on = muteSwitch.toggle(applying(off, to: micMuted))
+    #expect(!on.mute && sides(on) == ["82 output"])
+    // A USB microphone in use is muted with the rest; its app stops before the switch goes back
+    // on, so it is no longer a target, and the switch still unmutes it.
+    let call = SoundState(devices: [microphone, speakers, with(usbMic, running: true)], defaultOutput: 82, defaultInput: 89)
+    let callOff = muteSwitch.toggle(call)
+    #expect(Set(sides(callOff)) == ["82 output", "89 input", "150 input"])
+    var ended = applying(callOff, to: call)
+    ended.devices[2].running = false
+    #expect(Set(sides(muteSwitch.toggle(ended))) == ["82 output", "89 input", "150 input"])
+    // The speakers unmuted elsewhere between the clicks: the switch reads on and mutes them
+    // again, and still restores the microphone it muted first.
+    _ = muteSwitch.toggle(steve)
+    var partly = applying((true, [MuteSide(microphone, .input)]), to: steve)
+    #expect(partly.switchOn)
+    let again = muteSwitch.toggle(partly)
+    #expect(again.mute && sides(again) == ["82 output"])
+    partly = applying(again, to: partly)
+    #expect(Set(sides(muteSwitch.toggle(partly))) == ["82 output", "89 input"])
+}
+
+@Test func switchOnAnOutputWithoutAMuteFollowsTheMicrophone() {
+    var muteSwitch = MuteSwitch()
+    let monitorOut = SoundState(devices: [monitor, microphone], defaultOutput: 94, defaultInput: 89)
+    #expect(monitorOut.switchOn)
+    #expect(sides(muteSwitch.toggle(monitorOut)) == ["89 input"])
+    // Muted elsewhere: the switch reads off and unmutes it, the only thing it controls.
+    var fresh = MuteSwitch()
+    let mutedElsewhere = SoundState(devices: [monitor, with(microphone, inputMuted: true)], defaultOutput: 94, defaultInput: 89)
+    #expect(!mutedElsewhere.switchOn)
+    let toggle = fresh.toggle(mutedElsewhere)
+    #expect(!toggle.mute && sides(toggle) == ["89 input"])
+}
+
+@Test func keepsTheBuiltInMicrophoneWhenAirPodsConnect() {
+    let airpodsInput = with(airpodsMic, running: false)
+    var keeper = MicKeeper()
+    // AirPods there at launch, their microphone the default: left alone.
+    #expect(keeper.check(SoundState(devices: [microphone, speakers, airpods, airpodsInput], defaultOutput: 120,
+                                    defaultInput: 121)) == nil)
+    keeper = MicKeeper()
+    #expect(keeper.check(steve) == nil)
+    // They connect, and macOS makes them the default output and input, in one read or two.
+    let connected = SoundState(devices: steve.devices + [airpods, airpodsInput], defaultOutput: 82, defaultInput: 89)
+    #expect(keeper.check(connected) == nil)
+    var taken = connected
+    taken.defaultOutput = 120
+    taken.defaultInput = 121
+    #expect(keeper.check(taken)?.id == 89)
+    // Steve picks them again in Control Center: that stands.
+    #expect(keeper.check(connected) == nil)
+    #expect(keeper.check(taken) == nil)
+    // They leave and come back: kept again, in one read.
+    #expect(keeper.check(steve) == nil)
+    #expect(keeper.check(taken)?.id == 89)
+    // Picked in the panel before macOS switched: that stands.
+    #expect(keeper.check(steve) == nil)
+    #expect(keeper.check(connected) == nil)
+    keeper.chose("7C-1A-2B-3C-4D-03:input")
+    #expect(keeper.check(taken) == nil)
+    // A Mac without a built-in microphone, as a Mac mini: nothing to keep.
+    var mini = MicKeeper()
+    let noMic = SoundState(devices: [speakers], defaultOutput: 82)
+    #expect(mini.check(noMic) == nil)
+    #expect(mini.check(SoundState(devices: [speakers, airpods, airpodsInput], defaultOutput: 120, defaultInput: 121)) == nil)
+    #expect(steve.builtInMic?.id == 89)
+    #expect(Config().keepBuiltInMic)
+    #expect(Config(json: Data(#"{"keepBuiltInMic":false}"#.utf8))?.keepBuiltInMic == false)
 }
 
 @Test func symbolsByDevice() {

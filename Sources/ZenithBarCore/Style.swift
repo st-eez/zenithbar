@@ -64,6 +64,9 @@ public enum BarStyle: String, Decodable, Sendable {
 public struct Config: Decodable, Equatable, Sendable {
     public var style: BarStyle = .standard
     public var plugins: [Plugin] = []
+    /// Makes the MacBook's microphone the default input again when a Bluetooth headset that
+    /// just connected takes it (docs/sound.md, keepBuiltInMic).
+    public var keepBuiltInMic = true
 
     /// A command ZenithBar runs every `interval` seconds, and early on a wake or a right click
     /// on its item, reading the items it prints (docs/plugins.md).
@@ -82,12 +85,13 @@ public struct Config: Decodable, Equatable, Sendable {
         self = config
     }
 
-    private enum CodingKeys: String, CodingKey { case style, plugins }
+    private enum CodingKeys: String, CodingKey { case style, plugins, keepBuiltInMic }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         style = try container.decodeIfPresent(BarStyle.self, forKey: .style) ?? .standard
         plugins = try container.decodeIfPresent([Plugin].self, forKey: .plugins) ?? []
+        keepBuiltInMic = try container.decodeIfPresent(Bool.self, forKey: .keepBuiltInMic) ?? true
     }
 }
 

@@ -23,15 +23,18 @@
   summary's keys from the log.
 - Try the sound panel and the microphone with Steve at the Mac ([sound.md](sound.md),
   untested): mute the MacBook Pro Microphone from the item while Discord listens, and confirm
-  Discord hears silence; pick an output and an input from the panel, and whether the alert
-  sound device follows; drag both sliders; scroll on the speaker and the microphone with a
-  mouse and a trackpad, and drop scrolling if it misbehaves.
+  Discord hears silence; whether the alert sound device follows the default output; scroll on
+  the speaker and the microphone with a mouse and a trackpad, and drop scrolling if it
+  misbehaves. Steve's clicks on 2026-10-07 already set defaults and dragged both sliders.
 - With AirPods ([sound.md](sound.md), AirPods): connect and disconnect them with the panel open
   and closed, let them switch to the iPhone, and take a call, and check the speaker's
   `airpods.gen4`, the rows, the microphone item and that no row or icon is left behind. Check
   whether the AirPods' output device lists under INPUT during a call, and whether it keeps
   counting as a microphone in use after the call, which `IsRunningSomewhere` would show as live
   while only music plays (sound.md, section 2's ceiling).
+  Check `keepBuiltInMic` ([sound.md](sound.md), section 10): on connecting, the default input
+  goes back to the MacBook Pro Microphone with the output left on the AirPods, the log names
+  the switch, and the AirPods' microphone picked in the panel stays.
 - Try the Bluetooth panel with Steve at the Mac ([bluetooth.md](bluetooth.md), untested): allow
   ZenithBar's Bluetooth prompt on the panel's first open and check the log for the events
   starting; connect and disconnect the AirPods and the Beats from the panel, and the MX Master or

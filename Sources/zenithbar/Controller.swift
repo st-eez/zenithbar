@@ -64,6 +64,7 @@ import ZenithBarKit
             render()
             if soundShown { soundPanel.update() }
         }
+        sound.keepBuiltInMic = config.keepBuiltInMic
         network = Network { [weak self] glyph in
             guard let self else { return }
             if glyph { render() }
@@ -151,6 +152,7 @@ import ZenithBarKit
             if let config = Config(json: data) { self.config = config } else { log.error("Could not read config.json") }
         }
         plugins.configure(config.plugins)
+        sound?.keepBuiltInMic = config.keepBuiltInMic
         // A plugin gone from config.json takes its items off the bar, and their panel with them.
         pluginItems.removeAll { !plugins.owns($0.item.item) }
         pages = pages.filter { page in pluginItems.contains { $0.key == page.key } }
@@ -424,7 +426,7 @@ import ZenithBarKit
         // Omarchy's speaker: a left or middle click opens the panel, a right click mutes.
         case ("volume", .left), ("volume", .middle), ("mic", .middle):
             return popup.shown?.key == key ? popup.close() : openPopup(key, display: display)
-        case ("volume", .right): return sound.toggleOutputMute()
+        case ("volume", .right): return sound.toggleMute(.output, because: "speaker right click")
         // Omarchy's microphone: a left click mutes.
         case ("mic", .left): return sound.toggleMic()
         default: break

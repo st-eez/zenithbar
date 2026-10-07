@@ -113,48 +113,153 @@ public struct SoundState: Equatable, Sendable {
         return devices(direction).filter { ![.virtual, .aggregate].contains($0.transport) || $0.id == current }
     }
 
-    /// Input devices some app runs. A device with both directions counts while only its output
-    /// runs, as the property covers the device (docs/sound.md, the microphone).
-    public var micInUse: [AudioDevice] { devices.filter { $0.running && $0.input != nil } }
+    /// The input devices that can be a microphone: all but virtual ones, whose input carries
+    /// another app's sound, as Microsoft Teams Audio's, which keeps its own mute whatever is
+    /// written (docs/sound.md, writes).
+    public var microphones: [AudioDevice] { devices(.input).filter { $0.transport != .virtual } }
 
-    /// What a click on the microphone mutes or unmutes: the input devices in use, and the
-    /// default input, so a click with nothing in use still mutes the next call's microphone.
+    /// Microphones some app runs. A device with both directions counts while only its output
+    /// runs, as the property covers the device (docs/sound.md, the microphone).
+    public var micInUse: [AudioDevice] { microphones.filter(\.running) }
+
+    /// What a click on the microphone mutes: the microphones in use, and the default input, so
+    /// a click with nothing in use still mutes the next call's microphone.
     public var micTargets: [AudioDevice] {
         var targets = micInUse
         if let input = defaultDevice(.input), !targets.contains(where: { $0.id == input.id }) { targets.append(input) }
         return targets
     }
 
-    /// Some app hears a microphone: an input device in use is unmuted, or has no mute.
+    /// Some app hears a microphone: one in use is unmuted, or has no mute.
     public var micLive: Bool { micInUse.contains { $0.input?.muted != true } }
 
-    /// The microphone item: live while an app hears it, muted while a target is muted and none
-    /// is heard, and hidden otherwise.
+    /// Every input device muted, by ZenithBar or elsewhere, in use or not.
+    public var mutedInputs: [AudioDevice] { devices(.input).filter { $0.input?.muted == true } }
+
+    /// The microphone item: live while an app hears a microphone, muted while any input device
+    /// is muted, and hidden otherwise, so a device left muted always shows (docs/sound.md).
     public var mic: MicState {
         if micLive { return .live }
-        return micTargets.contains { $0.input?.muted == true } ? .muted : .hidden
+        return mutedInputs.isEmpty ? .hidden : .muted
     }
 
-    /// A click on the microphone item: mutes every target while live or unmuted, else unmutes
-    /// them. Only devices whose mute is settable.
+    /// A click on the microphone item. While it shows muted, or no target it can mute is
+    /// unmuted, it unmutes every muted input device, so none stays muted out of sight;
+    /// otherwise it mutes the unmuted targets. Only devices whose mute is settable.
     public var micToggle: (mute: Bool, devices: [AudioObjectID]) {
-        let mute = mic != .muted
-        return (mute, micTargets.filter { $0.input?.muteSettable == true && $0.input?.muted != mute }.map(\.id))
+        let unmuted = micTargets.filter { $0.input?.muteSettable == true && $0.input?.muted == false }
+        if mic != .muted, !unmuted.isEmpty { return (true, unmuted.map(\.id)) }
+        return (false, mutedInputs.filter { $0.input?.muteSettable == true }.map(\.id))
     }
 
-    /// The header's switch, as Omarchy's: on while the output or a microphone target is unmuted.
-    /// Only sides with a mute count, so an output without one leaves it able to read off.
-    public var anyAudible: Bool {
-        output?.muted == false || micTargets.contains { $0.input?.muted == false }
+    /// The header's switch: on while the default output is unmuted, so with the output muted it
+    /// reads off and its click brings the sound back; on an output without a mute, as the
+    /// monitors', while a microphone target it can mute is unmuted.
+    public var switchOn: Bool {
+        if let side = output, side.muteSettable, let muted = side.muted { return !muted }
+        return micTargets.contains { $0.input?.muteSettable == true && $0.input?.muted == false }
+    }
+}
+
+/// A device's side by UID, which outlives the device's ID when it reconnects.
+public struct AudioSideKey: Hashable, Sendable {
+    public var uid: String
+    public var direction: AudioDirection
+
+    public init(_ uid: String, _ direction: AudioDirection) {
+        self.uid = uid
+        self.direction = direction
+    }
+}
+
+/// One side of a device to mute or unmute.
+public struct MuteSide: Equatable, Sendable {
+    public var device: AudioDevice
+    public var direction: AudioDirection
+
+    public init(_ device: AudioDevice, _ direction: AudioDirection) {
+        self.device = device
+        self.direction = direction
     }
 
-    /// The switch's click: mutes the output and every microphone target while anything is
-    /// audible, else unmutes them all.
-    public var masterToggle: (mute: Bool, output: AudioObjectID?, inputs: [AudioObjectID]) {
-        let mute = anyAudible
-        let output = defaultDevice(.output).flatMap { $0.output?.muteSettable == true && $0.output?.muted != mute ? $0.id : nil }
-        let inputs = micTargets.filter { $0.input?.muteSettable == true && $0.input?.muted != mute }.map(\.id)
-        return (mute, output, inputs)
+    var key: AudioSideKey { AudioSideKey(device.uid, direction) }
+
+    /// Its mute is settable and reads `muted`.
+    func can(_ muted: Bool) -> Bool {
+        device.side(direction)?.muteSettable == true && device.side(direction)?.muted == muted
+    }
+}
+
+/// The panel's switch, which mutes the output and the microphone targets together and, turned
+/// back on, unmutes what it muted and the output, so it never unmutes a microphone muted on
+/// its own (docs/sound.md, the panel).
+public struct MuteSwitch: Sendable {
+    /// What the switch muted, kept until it unmutes them or they are unmuted elsewhere.
+    public private(set) var muted: Set<AudioSideKey> = []
+
+    public init() {}
+
+    /// The click: whether it mutes, and the sides to set.
+    public mutating func toggle(_ state: SoundState) -> (mute: Bool, sides: [MuteSide]) {
+        let all = state.devices.flatMap { device in [AudioDirection.output, .input].map { MuteSide(device, $0) } }
+            .filter { $0.device.side($0.direction) != nil }
+        // A side unmuted since, elsewhere or by the microphone item, is no longer the switch's.
+        muted.subtract(all.filter { $0.device.side($0.direction)?.muted == false }.map(\.key))
+        let output = state.defaultDevice(.output).map { MuteSide($0, .output) }
+        if state.switchOn {
+            let sides = ([output].compactMap { $0 } + state.micTargets.map { MuteSide($0, .input) }).filter { $0.can(false) }
+            muted.formUnion(sides.map(\.key))
+            return (true, sides)
+        }
+        var sides = all.filter { muted.contains($0.key) && $0.can(true) }
+        if let output, output.can(true), !sides.contains(output) { sides.append(output) }
+        // Nothing of the switch's to restore, as on the monitors with a microphone muted
+        // elsewhere: the click unmutes the targets, the only thing it then controls.
+        if sides.isEmpty { sides = state.micTargets.map { MuteSide($0, .input) }.filter { $0.can(true) } }
+        muted = []
+        return (false, sides)
+    }
+}
+
+/// Keeps the built-in microphone the default input when a Bluetooth headset connects, as macOS
+/// makes the headset's microphone the default and opening it drops the headset into the call
+/// profile, at 24 kHz (docs/sound.md, keepBuiltInMic).
+public struct MicKeeper: Sendable {
+    /// The input devices of the last state, nil before the first, by UID.
+    private var known: Set<String>?
+    /// Bluetooth inputs that connected while ZenithBar ran and have not been the default yet.
+    private var arrived: Set<String> = []
+
+    public init() {}
+
+    /// The built-in microphone to make the default input, when `state`'s default input is a
+    /// Bluetooth device that connected while ZenithBar ran and has not been the default before:
+    /// the switch macOS makes on connecting. A choice after that, in the panel, System Settings
+    /// or Control Center, stands until the device disconnects; devices there at launch are left
+    /// alone.
+    public mutating func check(_ state: SoundState) -> AudioDevice? {
+        let inputs = state.devices(.input)
+        let uids = Set(inputs.map(\.uid))
+        if let known { arrived.formUnion(inputs.filter { $0.transport == .bluetooth && !known.contains($0.uid) }.map(\.uid)) }
+        arrived.formIntersection(uids)
+        known = uids
+        guard let input = state.defaultDevice(.input), arrived.remove(input.uid) != nil,
+              let builtIn = state.builtInMic, builtIn.id != input.id else { return nil }
+        return builtIn
+    }
+
+    /// Steve picked `uid` as the default input in the panel: it stands until it disconnects.
+    public mutating func chose(_ uid: String) { arrived.remove(uid) }
+}
+
+extension SoundState {
+    /// The MacBook's own microphone, by its UID or the built-in microphone's data source,
+    /// `imic`, read on Steve's M3 Pro (docs/sound.md, the devices).
+    public var builtInMic: AudioDevice? {
+        devices(.input).first {
+            $0.transport == .builtIn && $0.input?.canBeDefault == true
+                && ($0.uid == "BuiltInMicrophoneDevice" || $0.input?.dataSource == fourCharCode("imic"))
+        }
     }
 }
 

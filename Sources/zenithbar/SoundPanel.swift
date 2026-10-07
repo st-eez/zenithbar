@@ -53,7 +53,9 @@ import ZenithBarCore
         for section in sections {
             for view in [section.caption, section.percent, section.slider, section.list] as [NSView] { addSubview(view) }
             section.slider.moved = { [weak self, unowned section] value in self?.moved(section, to: value) }
-            section.slider.rightClicked = { [weak self, unowned section] in self?.toggleMute(section.direction) }
+            section.slider.rightClicked = { [weak self, unowned section] in
+                self?.sound.toggleMute(section.direction, because: "panel \(section.direction) slider right click")
+            }
         }
         master.action = { [weak self] in self?.sound.toggleAll() }
         restyle()
@@ -85,14 +87,8 @@ import ZenithBarCore
             return update()
         }
         section.dragging = target
-        sound.setVolume(target, section.direction, value)
+        sound.setVolume(target, section.direction, value, because: "panel \(section.direction) slider")
         update()
-    }
-
-    private func toggleMute(_ direction: AudioDirection) {
-        guard let device = sound.state.defaultDevice(direction), let muted = device.side(direction)?.muted,
-              device.side(direction)?.muteSettable == true else { return }
-        sound.setMute(device.id, direction, !muted)
     }
 
     // MARK: layout
@@ -111,7 +107,7 @@ import ZenithBarCore
         let symbol = outputSymbol(output, bluetooth: output.flatMap { sound.bluetooth(for: $0) })
         icon.image = panelSymbol(symbol.name, pointSize: 22, color: symbol.dim ? theme.dim : theme.foreground, scale: scale)
         icon.frame = NSRect(x: pad, y: y + 4, width: 32, height: 32)
-        master.isOn = state.anyAudible
+        master.isOn = state.switchOn
         master.frame = NSRect(x: width - pad - 36, y: y + 8, width: 36, height: 24)
         let textX = pad + 32 + 14, textWidth = width - pad - 36 - 12 - textX
         title.set("Audio", color: theme.foreground.nsColor)
@@ -186,7 +182,7 @@ import ZenithBarCore
         let views = rows.map { row -> (view: NSView, height: CGFloat) in
             let view = DeviceRow(row.name, symbol: row.symbol, current: row.current, selectable: row.selectable,
                                  theme: theme, scale: scale, width: width)
-            view.action = { [weak self] in self?.sound.setDefault(row.id, section.direction) }
+            view.action = { [weak self] in self?.sound.choose(row.id, section.direction) }
             return (view, DeviceRow.height)
         }
         section.listHeight = section.list.set(views, width: width)

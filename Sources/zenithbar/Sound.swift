@@ -16,6 +16,10 @@ import ZenithBarKit
     private var readPending = false
     /// Addresses system_profiler was asked about, so each is asked once.
     private var lookedUp: Set<String> = []
+    private var muteSwitch = MuteSwitch()
+    private var keeper = MicKeeper()
+    /// config.json's `keepBuiltInMic`.
+    var keepBuiltInMic = true
     private lazy var listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
         MainActor.assumeIsolated { self?.readSoon() }
     }
@@ -58,6 +62,11 @@ import ZenithBarKit
         }
         watches = wanted
         lookUpBluetooth(next)
+        // Checked on every read, so turning the setting on later acts on no old connection.
+        // Its write comes back through the listener as a default that is not Bluetooth.
+        if let builtIn = keeper.check(next), keepBuiltInMic, let input = next.defaultDevice(.input) {
+            setDefault(builtIn.id, .input, because: "keepBuiltInMic, as \(input.name) became the default input")
+        }
         guard next != state else { return }
         state = next
         changed()
@@ -95,61 +104,98 @@ import ZenithBarKit
 
     // MARK: writes, each read back through the listeners
 
-    func setVolume(_ device: AudioObjectID, _ direction: AudioDirection, _ volume: Double) {
-        var value = Float32(min(1, max(0, volume)))
-        set(device, kAudioHardwareServiceDeviceProperty_VirtualMainVolume, direction.scope, &value)
+    /// Each write is logged at notice level, with what the clicked control was and the value
+    /// read before and after, so `log show` explains a glitch (docs/sound.md, writes).
+    func setVolume(_ device: AudioObjectID, _ direction: AudioDirection, _ volume: Double, because reason: String) {
+        write(device, kAudioHardwareServiceDeviceProperty_VirtualMainVolume, direction, Float32(min(1, max(0, volume))),
+              "volume", reason)
     }
 
-    func setMute(_ device: AudioObjectID, _ direction: AudioDirection, _ mute: Bool) {
-        var value = UInt32(mute ? 1 : 0)
-        set(device, kAudioDevicePropertyMute, direction.scope, &value)
+    func setMute(_ device: AudioObjectID, _ direction: AudioDirection, _ mute: Bool, because reason: String) {
+        write(device, kAudioDevicePropertyMute, direction, UInt32(mute ? 1 : 0), "mute", reason)
     }
 
-    func setDefault(_ device: AudioObjectID, _ direction: AudioDirection) {
-        var value = device
-        set(AudioObjectID(kAudioObjectSystemObject),
-            direction == .output ? kAudioHardwarePropertyDefaultOutputDevice : kAudioHardwarePropertyDefaultInputDevice,
-            kAudioObjectPropertyScopeGlobal, &value)
+    func setDefault(_ device: AudioObjectID, _ direction: AudioDirection, because reason: String) {
+        let system = AudioObjectID(kAudioObjectSystemObject)
+        let selector = direction == .output ? kAudioHardwarePropertyDefaultOutputDevice : kAudioHardwarePropertyDefaultInputDevice
+        let before = Self.value(system, selector, AudioObjectID(0))
+        var value = device, address = Self.address(selector, kAudioObjectPropertyScopeGlobal)
+        let status = AudioObjectSetPropertyData(system, &address, 0, nil, UInt32(MemoryLayout<AudioObjectID>.size), &value)
+        let after = Self.value(system, selector, AudioObjectID(0))
+        log.notice("""
+            Sound: \(reason, privacy: .public): default \(String(describing: direction), privacy: .public) \
+            \(self.describe(before), privacy: .public) -> \(self.describe(after), privacy: .public), \
+            asked \(self.describe(device), privacy: .public), status \(status)
+            """)
+    }
+
+    /// A panel row's click: makes the device the default, and a Bluetooth microphone picked
+    /// there stays the default input until it disconnects (`MicKeeper`).
+    func choose(_ device: AudioObjectID, _ direction: AudioDirection) {
+        if direction == .input, let uid = state.devices.first(where: { $0.id == device })?.uid { keeper.chose(uid) }
+        setDefault(device, direction, because: "panel \(direction) row")
     }
 
     /// The default output's volume moved by `steps` of 5%, as a scroll on the speaker.
     func stepOutput(_ steps: Int) {
         guard let device = state.defaultDevice(.output), let side = device.output, side.volumeSettable,
               let volume = side.volume else { return }
-        setVolume(device.id, .output, stepVolume(volume, steps: steps))
+        setVolume(device.id, .output, stepVolume(volume, steps: steps), because: "speaker scroll")
     }
 
     /// The default input's level moved by `steps` of 5%, as a scroll on the microphone.
     func stepInput(_ steps: Int) {
         guard let device = state.defaultDevice(.input), let side = device.input, side.volumeSettable,
               let volume = side.volume else { return }
-        setVolume(device.id, .input, stepVolume(volume, steps: steps))
+        setVolume(device.id, .input, stepVolume(volume, steps: steps), because: "microphone scroll")
     }
 
-    func toggleOutputMute() {
-        guard let device = state.defaultDevice(.output), let muted = device.output?.muted, device.output?.muteSettable == true
-        else { return }
-        setMute(device.id, .output, !muted)
+    /// The speaker's right click, or a right click on a panel slider: mutes or unmutes the
+    /// default device's side.
+    func toggleMute(_ direction: AudioDirection, because reason: String) {
+        guard let device = state.defaultDevice(direction), let muted = device.side(direction)?.muted,
+              device.side(direction)?.muteSettable == true else { return }
+        setMute(device.id, direction, !muted, because: reason)
     }
 
     /// The microphone item's click (`SoundState.micToggle`).
     func toggleMic() {
         let toggle = state.micToggle
-        for device in toggle.devices { setMute(device, .input, toggle.mute) }
+        for device in toggle.devices { setMute(device, .input, toggle.mute, because: "microphone click") }
     }
 
-    /// The panel's switch (`SoundState.masterToggle`).
+    /// The panel's switch (`MuteSwitch`).
     func toggleAll() {
-        let toggle = state.masterToggle
-        if let output = toggle.output { setMute(output, .output, toggle.mute) }
-        for device in toggle.inputs { setMute(device, .input, toggle.mute) }
+        let toggle = muteSwitch.toggle(state)
+        for side in toggle.sides { setMute(side.device.id, side.direction, toggle.mute, because: "panel switch") }
     }
 
-    private func set<T: BitwiseCopyable>(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector, _ scope: AudioObjectPropertyScope,
-                        _ value: inout T) {
-        var address = AudioObjectPropertyAddress(mSelector: selector, mScope: scope, mElement: kAudioObjectPropertyElementMain)
-        let status = AudioObjectSetPropertyData(object, &address, 0, nil, UInt32(MemoryLayout<T>.size), &value)
-        if status != noErr { log.error("CoreAudio refused to set \(selector) on device \(object): \(status)") }
+    private func write<T: BitwiseCopyable>(_ device: AudioObjectID, _ selector: AudioObjectPropertySelector,
+                                           _ direction: AudioDirection, _ value: T, _ what: String, _ reason: String) {
+        let before = Self.value(device, selector, value, direction.scope)
+        var value = value, address = Self.address(selector, direction.scope)
+        let status = AudioObjectSetPropertyData(device, &address, 0, nil, UInt32(MemoryLayout<T>.size), &value)
+        let after = Self.value(device, selector, value, direction.scope)
+        log.notice("""
+            Sound: \(reason, privacy: .public): \(String(describing: direction), privacy: .public) \(what, privacy: .public) \
+            of \(self.describe(device), privacy: .public), element main: \(Self.text(before), privacy: .public) -> \
+            \(Self.text(after), privacy: .public), wrote \(Self.text(value), privacy: .public), status \(status)
+            """)
+    }
+
+    /// "MacBook Pro Microphone (89, BuiltInMicrophoneDevice)".
+    private func describe(_ device: AudioObjectID?) -> String {
+        guard let device else { return "none" }
+        let name = Self.string(device, kAudioObjectPropertyName) ?? "?", uid = Self.string(device, kAudioDevicePropertyDeviceUID) ?? "?"
+        return "\(name) (\(device), \(uid))"
+    }
+
+    private static func text<T>(_ value: T?) -> String {
+        switch value {
+        case let value as Float32: String(format: "%.3f", value)
+        case let value?: "\(value)"
+        case nil: "unread"
+        }
     }
 
     // MARK: reads

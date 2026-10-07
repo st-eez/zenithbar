@@ -48,18 +48,57 @@ none hidden:
 
 ## 3. Writes
 
+- **Elements:** every control ZenithBar writes is on the main element. On 2026-10-07 the
+  speakers and the MacBook Pro Microphone had their mute and volume on element 0 only, none on
+  channels 1 and 2 (probe of each element). coreaudiod's saved settings show Bluetooth
+  outputs, as the AirPods', keep a volume on each channel and one mute on the main element;
+  `kAudioHardwareServiceDeviceProperty_VirtualMainVolume` sets the channels together, and the
+  mute is on element 0 there too.
+- **The MacBook Pro Microphone:** `zenithbar-probe sound write "MacBook Pro Microphone"`,
+  which writes only while no process runs the device, on 2026-10-07 at 18:46 with nothing
+  recording: its input mute read 1 at once after the write, its listener fired 0.7 ms later,
+  it still read 1 300 ms later, and it read 0 after the probe restored it; its volume read
+  0.502 before and after. That every app then hears silence is unconfirmed (section 11).
 - `zenithbar-probe sound write "Microsoft Teams Audio"`, three runs: setting its input mute
   and its input volume each returned no error in under 2 ms and fired the listener, and the
   value read back unchanged at once and 300 ms later, mute 0 and volume 1.00. Teams' driver
-  takes the write and keeps its own value. The probe restored both and refuses any device that
-  is not virtual; it refused the MacBook Pro Microphone.
-- No device here shows whether a mute holds, as Steve asked that no real device be written
-  while the Mac is in use. That the MacBook Pro Microphone's `kAudioDevicePropertyMute` is
-  settable on the input scope, and that a muted device gives every app silence, Discord
-  included, is unconfirmed.
+  takes the write and keeps its own value. So a virtual device counts as no microphone
+  (`SoundState.microphones`): Teams Audio running, as its IO did on 2026-10-06 at 20:18 in
+  coreaudiod's log, held the microphone item live, and every click muted again.
 - A write elsewhere comes back through the listeners as any change does: the installed bar
   re-read its state after each of the probe's writes to Teams Audio, three reads for the four
-  writes, as it reads once for a burst.
+  writes, as it reads once for a burst. ZenithBar writes nothing in answer to a listener but
+  `keepBuiltInMic`'s default input (section 10), whose own change reads back as a default that
+  is not Bluetooth, so no write echoes.
+- **Logs:** ZenithBar logs each write at notice level, which the unified log keeps: the
+  control clicked, the device's name, ID and UID, the direction, and the value read before and
+  after, with CoreAudio's status. `log show --predicate 'subsystem == "io.github.st-eez.zenithbar"
+  AND eventMessage BEGINSWITH "Sound"'` lists them. CoreAudio logs every write too, in the
+  process that made it, as `LogVolumeChangeForClientSide` (mute and volume) and
+  `HALDefaultDeviceProperty::SetData` (defaults), and coreaudiod as
+  `LogVolumeChangeForServerSideControl`: `log show --predicate 'process == "zenithbar" OR
+  process == "coreaudiod"' | grep -E 'LogVolumeChange|SetDefaultDevice|SetData'`.
+
+### Steve's glitch on 2026-10-07
+
+Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:38:
+
+- 18:37:35 to 18:37:38: the panel's rows made the ASUS VA24E, the LG ULTRAWIDE and the
+  speakers the default output in turn. The apps playing took until 18:37:47 to move to the
+  speakers, so the sound went to the LG for 9 s: coreaudiod stopped the LG's IO and started
+  the speakers' only then. The apps follow the default on their own time; ZenithBar wrote
+  each default once.
+- 18:38:00 to 18:38:07: the switch muted and unmuted the speakers and the microphone together,
+  twice, each write holding (coreaudiod's server side logged each one).
+- 18:38:24: the switch muted both. 18:38:30 the microphone item unmuted the microphone, and
+  the item hid, as nothing used it. 18:38:32 the switch, on because the microphone was
+  audible, muted the microphone alone, the speakers still muted. 18:38:34 the item unmuted it
+  again, 18:38:39 the switch muted it again, and 18:38:40 the switch, now off, unmuted both.
+  The speakers stayed muted for 16 s while each click on the switch muted the microphone.
+- The cause was the switch's rule, Omarchy's: on while the output or the microphone is
+  unmuted. It now follows the output (section 9). The volumes Steve set stuck: the
+  microphone's last write, 0.502104 at 18:39:20, is what CoreAudio and System Settings read
+  (section 5).
 
 ## 4. AirPods and headphones
 
@@ -88,7 +127,26 @@ none hidden:
   (`num streams in/out: 1/1`), so both may list under INPUT then. coreaudiod logged no data
   source for them (`datasource in/out 0/0`).
 
-## 5. Events and cost
+## 5. Persistence
+
+- ZenithBar writes through CoreAudio's properties, as System Settings and Control Center do,
+  so coreaudiod holds each value for every app at once, and keeps it when ZenithBar quits.
+  On 2026-10-07, after Steve's drags, System Settings' Sound pane read the input volume slider
+  (`InputVolumeSlider`, through accessibility) as 0.5021, CoreAudio as 0.502104, and
+  `osascript -e 'get volume settings'` as input volume 50. System Settings shows no input mute.
+- coreaudiod saves the mutes and volumes to
+  `/Library/Preferences/Audio/com.apple.audio.DeviceSettings.plist`, by device UID and data
+  source: the file was last written on 2026-10-06 at 09:11, 4 minutes before the restart at
+  09:15, and kept the MacBook Pro Microphone at 0.706 and the speakers at 0.375 though both
+  read 0.50 on 2026-10-07; neither the probe's mute, nor two days of changes, nor sleep wrote
+  it. coreaudiod writes it at shutdown, so a change survives a restart, and a crash or
+  forced power off loses changes since the last save, for System Settings' changes as for
+  ZenithBar's.
+- The preferred defaults, `preferred devices` in `com.apple.audio.SystemSettings.plist`, were
+  written on 2026-10-07 at 18:37, as the panel's rows set the default output: coreaudiod saves
+  those at once.
+
+## 6. Events and cost
 
 - `zenithbar-probe sound watch 30`, every device's and process's properties: one event in 30
   s, the speakers' running state at the start. Nothing fires while nothing changes.
@@ -99,7 +157,7 @@ none hidden:
 - Installed, ZenithBar spent 40 ms of CPU in 120 s with the panel closed, 0.33 ms a second,
   with everything it runs, at 50 MB resident.
 
-## 6. The speaker
+## 7. The speaker
 
 - **Icon** (`outputSymbol`): the filled SF speaker by volume (`volumeSymbol`), dim and slashed
   while muted, full on an output without a volume; AirPods' or headphones' symbol (section 4)
@@ -114,36 +172,51 @@ none hidden:
   and unit tested, but untested on screen, as posting a scroll needs the pointer. If it proves
   flaky, drop `BarView.scrollWheel`: the clicks and the sliders cover the same.
 
-## 7. The microphone item
+## 8. The microphone item
 
 - **Place:** left of the speaker: the agents gauge, the microphone, the speaker, the network,
   the battery and the clock.
-- **When** (`SoundState.mic`): live, `mic.fill` in the foreground color, while any input device
-  in use is unmuted; muted, `mic.slash.fill` in the theme's alert color, while none is heard and
-  a target (below) is muted, even with no app using a microphone; hidden otherwise. A mute set
-  elsewhere, as in System Settings, shows, as ZenithBar listens to every input device's mute.
-  Drawn at 14 pt and cropped to its ink, as the speaker.
-- **Which devices a click mutes** (`micTargets`): the input devices in use, and the default
-  input. With a call on, that mutes what the call hears; with none, it mutes the next call's
-  microphone, and the item stays as a reminder. While live or unmuted a click mutes every
-  target; while muted it unmutes the muted ones. A device without a settable mute is skipped.
+- **Microphones** (`SoundState.microphones`): every input device but virtual ones, whose input
+  is another app's sound and whose mute may not hold, as Microsoft Teams Audio's (section 3).
+- **When** (`SoundState.mic`): live, `mic.fill` in the foreground color, while a microphone in
+  use is unmuted or has no mute; muted, `mic.slash.fill` in the theme's alert color, while none
+  is heard and any input device is muted, by ZenithBar or elsewhere, in use or not; hidden
+  otherwise. So a device left muted always shows, as the MacBook Pro Microphone muted before
+  AirPods took the default input, which hid it before 2026-10-07. ZenithBar listens to every
+  input device's mute, so a mute set in System Settings shows too. The item hides once nothing
+  is muted and nothing records, after Omarchy's widget; the panel's INPUT slider then shows the
+  level. Drawn at 14 pt and cropped to its ink, as the speaker.
+- **Which devices a click mutes** (`micTargets`): the microphones in use, and the default input.
+  With a call on, that mutes what the call hears; with none, it mutes the next call's
+  microphone, and the item stays as a reminder. A click while it shows muted unmutes every
+  muted input device, targets or not, so a microphone muted in a call that has since ended
+  comes back with the rest; a click while it shows live or hidden mutes the unmuted targets,
+  and unmutes everything when none is left to mute, so a microphone without a mute in use
+  cannot hold the item on muting (`micToggle`). A device without a settable mute is skipped.
 - **Clicks,** Omarchy's widget: a left click mutes or unmutes, a middle click opens the sound
   panel under it, and scrolling steps the default input's level by 5%.
 
-## 8. The panel
+## 9. The panel
 
 - **Header:** the speaker's icon at 22 pt, "Audio", and Omarchy's volume name under it, dim, in
   capitals spaced 1.2 pt (`outputVolumeName`): Muted, Silenced, Whisper, Murmur, Easy listening,
   Steady groove, Cranked up, Party mode, Concert hall. At the right, a switch that mutes the
-  output and the microphone targets together, on while either is unmuted, as Omarchy's; only
-  sides with a mute count, so on the monitors it follows the microphone.
+  output and the microphone targets together (`MuteSwitch`). It is on while the default output
+  is unmuted, and on an output without a mute, as the monitors', while a microphone target is
+  unmuted. Omarchy's is on while either is unmuted, which with the speakers muted and the
+  microphone not read on, so its click muted the microphone and left the sound off (section 3,
+  Steve's glitch). Turned off, it mutes the output and every unmuted target and remembers them
+  by UID; turned on, it unmutes what it muted and is still muted, wherever the device is now,
+  and the default output, so it never unmutes a microphone muted on its own. With nothing of
+  its own to restore and no output mute, it unmutes the muted targets.
 - **OUTPUT and INPUT:** the caption with the percent at the right, the default device's slider,
   then the devices, the default bold and highlighted, each with its icon: `hifispeaker.fill`
   for built-in speakers, `mic.fill` for a built-in microphone, `display` for HDMI and
   DisplayPort, AirPods and headphones as above, `dot.radiowaves.left.and.right` for other
   Bluetooth, `cable.connector` for USB, `airplayaudio` for AirPlay and `iphone` for Continuity.
   A click makes the device the default output or input; the mic item's middle click opens the
-  same panel, where INPUT picks the microphone. A slider is disabled on a side without a
+  same panel, where INPUT picks the microphone. A Bluetooth microphone picked there stays the
+  default input (section 10). A slider is disabled on a side without a
   volume, as the monitors', with "--" for its percent; a muted side's slider shows at half
   strength, and a right click on it mutes or unmutes that side, as Omarchy's.
 - **Virtual devices,** Steve's choice on 2026-10-07: devices whose transport type is virtual or
@@ -170,12 +243,37 @@ none hidden:
   `mic live|muted|off|real`, which draws the microphone item that way without an app or a mute,
   for captures.
 
-## 9. Untested
+## 10. keepBuiltInMic
 
-On 2026-10-07, with the Mac in use, nothing changed a real device, the default, or the output's
-level. Untested: muting the MacBook Pro Microphone, and that every app then hears silence; a
-click on a device row setting the default, and whether macOS moves the alert sound device with
-it; dragging a slider and the knob's behaviour at release; scrolling on the items; the panel
+- **Why:** when AirPods or another Bluetooth headset connect, macOS makes them the default
+  output and input. An app opening their microphone drops them into the call profile, whose
+  input runs at 24 kHz (section 4), and their output then sounds poor.
+- **What** (`MicKeeper`, `Sound.read`): when the default input becomes a Bluetooth device that
+  connected while ZenithBar ran and has not been the default before, ZenithBar makes the
+  built-in microphone the default input again, and leaves the default output on the headset.
+  The built-in microphone is the built-in input with the UID `BuiltInMicrophoneDevice` or the
+  data source `imic`, as on Steve's M3 Pro; on a Mac without one ZenithBar does nothing. Each
+  switch is logged at notice level, as `keepBuiltInMic, as <headset> became the default input`.
+- **Choices stand:** a Bluetooth microphone Steve picks in the panel's INPUT stays the default
+  until it disconnects. So does one he picks in System Settings or Control Center after
+  ZenithBar's switch, and one connected before ZenithBar started. **Ceiling:** a headset that
+  connected without macOS making it the default, then picked in System Settings or Control
+  Center, is switched back once; picking it in the panel avoids that. The upgrade path is to
+  act only within a few seconds of the headset connecting.
+- **Setting:** `"keepBuiltInMic": false` in `~/.config/zenithbar/config.json` turns it off; it is
+  on when the key is missing. ZenithBar reads the change at once.
+- **Apps with their own microphone setting,** as Discord, Zoom and Microsoft Teams, use the
+  device chosen there and ignore the default: set them to "MacBook Pro Microphone" or to
+  "Default" for this to keep the headset out of the call profile.
+- **Untested:** no Bluetooth headset connected while this was built; the unit tests cover the
+  states (`keepsTheBuiltInMicrophoneWhenAirPodsConnect`).
+
+## 11. Untested
+
+On 2026-10-07, with the Mac in use, only the probe's mute of the idle MacBook Pro Microphone
+and Steve's own clicks changed a real device (section 3). Untested: that every app hears
+silence from a muted microphone; whether macOS moves the alert sound device with the default
+output; the knob's behaviour at a drag's release; scrolling on the items; the panel
 following a change Steve makes while it is open, beyond the listener path the probe's writes
 showed. AirPods were not connected: their symbol, the system_profiler match, connecting and
 leaving while the bar runs and while the panel is open, switching to another Apple device, and
