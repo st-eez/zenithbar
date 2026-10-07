@@ -113,6 +113,11 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   number, as sketchybar-app-font's glyphs carry several points of blank on their right;
   SketchyBar's own gaps read 14.5 to 16 pt with Steve's paddings. Measured from screen
   captures, 2026-10-06; the gaps now read 15.5 to 16 pt, and 7 to 8.5 pt inside pills.
+- **Room on the left:** the left run ends 16 pt before the right run and, on a display with
+  a notch, 16 pt before the notch's left edge, x 771.5 on the 1728 pt built-in display, as
+  the 32 pt notch hides the 25 pt bar's ink. Items that would pass that are left out from
+  the end, the front app's name first, which is cut to 24 characters with "…" so that
+  rarely happens. The runs then never overlap, so a click finds one item.
 - **Vertical centering:** text centers the height of its first font's capitals and figures
   on the bar's middle line, so baselines agree and descenders move nothing, as Omarchy's
   shell centers its labels (`WidgetButton.qml`); icons center their ink, and a pill's app

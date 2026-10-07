@@ -99,6 +99,8 @@ final class BarPanel: NSPanel {
     private var outlined: (style: BarStyle, width: CGFloat)?
     /// The display's scale the items were drawn at.
     private var scale: CGFloat?
+    /// The left edge of the display's notch, from the display's left, where the left run ends.
+    private var notch: Double?
     private var left: [(key: String, item: Item)] = []
     private var right: [(key: String, item: Item)] = []
     private var layers: [String: CALayer] = [:]
@@ -123,6 +125,7 @@ final class BarPanel: NSPanel {
         panel.contentView = view
         fill.frame = view.bounds
         view.layer?.addSublayer(fill)
+        notch = Self.notch(on: screen)
         panel.orderFrontRegardless()
     }
 
@@ -130,9 +133,23 @@ final class BarPanel: NSPanel {
         NSRect(x: screen.frame.minX, y: screen.frame.maxY - height, width: screen.frame.width, height: height)
     }
 
+    /// The notch is 32 pt tall, so the bar sits inside it and ink there is hidden. The area
+    /// beside it is in global coordinates: on the built-in display, its frame's top at y 0, it
+    /// read y -32 (2026-10-06).
+    private static func notch(on screen: NSScreen) -> Double? {
+        screen.auxiliaryTopLeftArea.map { Double($0.maxX - screen.frame.minX) }
+    }
+
     func move(to screen: NSScreen) {
         panel.setFrame(Self.frame(on: screen), display: false)
         fill.frame = CGRect(origin: .zero, size: panel.frame.size)
+        if Self.notch(on: screen) != notch {
+            notch = Self.notch(on: screen)
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            place()
+            CATransaction.commit()
+        }
     }
 
     /// Shows `left` and `right`, each in order from its end of the bar inward.
@@ -206,14 +223,14 @@ final class BarPanel: NSPanel {
     static let gap = 16.0
 
     private func place() {
-        let inks = (left + right).map { $0.item.ink }
         let starts = layout(left: left.map { Double($0.item.ink.upperBound - $0.item.ink.lowerBound) },
                             right: right.map { Double($0.item.ink.upperBound - $0.item.ink.lowerBound) },
                             width: Double(panel.frame.width), insets: (outlined?.style ?? .standard).insets,
-                            gap: Self.gap)
+                            gap: Self.gap, notch: notch)
+        for (index, (key, _)) in left.enumerated() { layers[key]?.isHidden = index >= starts.left.count }
         frames = [:]
-        for (((key, item), ink), x) in zip(zip(left + right, inks), starts.left + starts.right) {
-            let width = ink.upperBound - ink.lowerBound, half = CGFloat(Self.gap / 2)
+        for ((key, item), x) in zip(left.prefix(starts.left.count) + right, starts.left + starts.right) {
+            let ink = item.ink, width = ink.upperBound - ink.lowerBound, half = CGFloat(Self.gap / 2)
             frames[key] = CGRect(x: x - half, y: 0, width: width + 2 * half, height: Self.height)
             let size = item.size
             // On the pixel grid, as a bitmap moved by part of a pixel draws its text blurred.

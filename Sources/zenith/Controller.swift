@@ -173,7 +173,9 @@ import ZenithCore
             return (key, Item(content: .text(text)))
         }
         if let app = row.frontApp {
-            let text = NSAttributedString(string: app, attributes: [.font: font(13), .foregroundColor: theme.foreground.nsColor])
+            // Short enough that the name, last on the left, rarely meets the right run or the notch.
+            let name = app.count > 24 ? app.prefix(23) + "…" : app
+            let text = NSAttributedString(string: name, attributes: [.font: font(13), .foregroundColor: theme.foreground.nsColor])
             items.append(("front", Item(content: .text(text))))
         }
         return items

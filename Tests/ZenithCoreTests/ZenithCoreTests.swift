@@ -49,9 +49,28 @@ import Testing
 }
 
 @Test func layoutPlacesBothEnds() {
-    let edges = layout(left: [10, 20], right: [30, 5], width: 100, insets: (left: 2, right: 3), gap: 4)
+    let edges = layout(left: [10, 20], right: [30, 5], width: 100, insets: (left: 2, right: 3), gap: 4, notch: nil)
     #expect(edges.left == [2, 16])
     #expect(edges.right == [67, 58])
+}
+
+@Test func leftRunStopsBeforeTheRightRun() {
+    // The right run starts at 70, so the left run ends by 66.
+    #expect(layout(left: [30, 30], right: [30], width: 100, insets: (left: 0, right: 0), gap: 4, notch: nil).left == [0, 34])
+    #expect(layout(left: [30, 30, 5], right: [30], width: 100, insets: (left: 0, right: 0), gap: 4, notch: nil).left == [0, 34])
+    // Items are left out from the end, so a short one after a long one goes too.
+    #expect(layout(left: [30, 40, 1], right: [30], width: 100, insets: (left: 0, right: 0), gap: 4, notch: nil).left == [0])
+    // Without a right run, the left run ends at the right inset.
+    #expect(layout(left: [50, 46], right: [], width: 100, insets: (left: 0, right: 4), gap: 4, notch: nil).left == [0])
+}
+
+@Test func leftRunStopsBeforeTheNotch() {
+    // The built-in display: 1728 pt wide, its notch from 771.5.
+    let edges = layout(left: [700, 40], right: [100], width: 1728, insets: (left: 21, right: 23), gap: 16, notch: 771.5)
+    #expect(edges.left == [21])
+    #expect(edges.right == [1605])
+    #expect(layout(left: [700, 18], right: [], width: 1728, insets: (left: 21, right: 23), gap: 16, notch: 771.5).left
+        == [21, 737])
 }
 
 @Test func volumeGlyphs() {
