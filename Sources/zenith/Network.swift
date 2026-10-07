@@ -19,7 +19,7 @@ import ZenithKit
         Task { @MainActor in self?.received(event) }
     }
     private var store: SCDynamicStore?
-    /// Called at each change, with whether the item's glyph or color changed.
+    /// Called at each change, with whether the item's icon or color changed.
     private let changed: @MainActor (_ glyph: Bool) -> Void
 
     init(changed: @escaping @MainActor (_ glyph: Bool) -> Void) {
@@ -109,16 +109,17 @@ import ZenithKit
 
     private func update() {
         let next = Route(primary: primary, wifiRSSI: rssi, wifiPower: wifiPower)
-        let before = networkGlyph(route), after = networkGlyph(next)
+        let before = networkIcon(route), after = networkIcon(next)
         route = next
-        changed(before.glyph != after.glyph || before.dim != after.dim)
+        changed(before.icon != after.icon || before.dim != after.dim)
     }
 
     /// The panel a click opens, read when it opens: every service with an address on hardware,
     /// the primary first and marked, Wi-Fi with its signal and its network's name when
     /// Location Services allows it, which it does not for Zenith (docs/network.md).
     func panel() -> PluginItem {
-        let glyph = networkGlyph(route).glyph
+        // A symbol is drawn by the panel from the route, not from text (Controller.openPopup).
+        let glyph = if case let .glyph(glyph) = networkIcon(route).icon { glyph } else { "" }
         let shown = services.filter { $0.kind != .other && $0.address != nil }
             .sorted { $0 == primary && $1 != primary }
         var rows: [PluginItem.Row] = []

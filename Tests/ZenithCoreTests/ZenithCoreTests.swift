@@ -112,14 +112,14 @@ import Testing
     #expect(wifiLevel(rssi: -120) == 0)
 }
 
-@Test func networkGlyphs() {
-    #expect(networkGlyph(.wifi(rssi: -45)) == ("\u{F0928}", false))
-    #expect(networkGlyph(.wifi(rssi: -70)).glyph == "\u{F0922}")
-    #expect(networkGlyph(.wifi(rssi: -95)).glyph == "\u{F092F}")
-    #expect(networkGlyph(.ethernet) == ("\u{F0200}", false))
-    #expect(networkGlyph(.offline(wifiPower: false)) == ("\u{F092E}", true))
-    #expect(networkGlyph(.offline(wifiPower: true)) == ("\u{F092B}", true))
-    #expect(networkGlyph(.offline(wifiPower: nil)).dim)
+@Test func networkIcons() {
+    #expect(networkIcon(.wifi(rssi: -45)) == (.symbol("wifi", value: 1), false))
+    #expect(networkIcon(.wifi(rssi: -70)).icon == .symbol("wifi", value: 0.5))
+    #expect(networkIcon(.wifi(rssi: -95)).icon == .symbol("wifi", value: 0))
+    #expect(networkIcon(.ethernet) == (.glyph("\u{F0200}"), false))
+    #expect(networkIcon(.offline(wifiPower: false)) == (.symbol("wifi.slash", value: nil), true))
+    #expect(networkIcon(.offline(wifiPower: true)) == (.symbol("wifi.exclamationmark", value: nil), true))
+    #expect(networkIcon(.offline(wifiPower: nil)).dim)
 }
 
 @Test func primaryServiceSkipsTunnels() {

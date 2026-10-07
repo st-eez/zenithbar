@@ -29,9 +29,11 @@ import ZenithKit
 
     /// Shows `page` of `item` under `anchor`, the item's frame on screen, its right edge on the
     /// item's and kept on `screen`.
+    /// `icon`, when given, shows in place of the item's glyph, as the network's SF Symbol.
     func show(_ item: PluginItem, page: Int, key: String, display: CGDirectDisplayID, anchor: NSRect, screen: NSRect,
-              theme: Theme) {
+              theme: Theme, icon: NSImage? = nil) {
         view.item = item
+        view.icon = icon
         view.page = page
         view.theme = theme
         let size = view.size
@@ -50,6 +52,7 @@ import ZenithKit
 
 private final class PopupView: NSView {
     var item: PluginItem?
+    var icon: NSImage?
     var page = 0
     var theme = Theme.fallback
     private let selected: @MainActor (Int) -> Void
@@ -118,10 +121,19 @@ private final class PopupView: NSView {
 
         let pad = Self.pad
         var top = pad
-        // Placed by its ink, as the robot glyph draws past its advance.
-        let glyph = text(item.icon, size: 13, bold: true, color: theme.accent), ink = inkBounds(glyph)
-        draw(glyph, x: pad - ink.minX, top: top, height: Self.rowHeight)
-        draw(text(current.title, size: 11.5, bold: true, color: theme.foreground), x: pad + ink.width + 6, top: top,
+        let iconWidth: CGFloat
+        if let icon {
+            icon.draw(in: NSRect(x: pad, y: top + (Self.rowHeight - icon.size.height) / 2, width: icon.size.width,
+                                 height: icon.size.height), from: .zero, operation: .sourceOver, fraction: 1,
+                      respectFlipped: true, hints: nil)
+            iconWidth = icon.size.width
+        } else {
+            // Placed by its ink, as the robot glyph draws past its advance.
+            let glyph = text(item.icon, size: 13, bold: true, color: theme.accent), ink = inkBounds(glyph)
+            draw(glyph, x: pad - ink.minX, top: top, height: Self.rowHeight)
+            iconWidth = ink.width
+        }
+        draw(text(current.title, size: 11.5, bold: true, color: theme.foreground), x: pad + iconWidth + 6, top: top,
              height: Self.rowHeight)
         top += Self.rowHeight
         tabs = []

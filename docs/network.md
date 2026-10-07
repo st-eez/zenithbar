@@ -1,7 +1,7 @@
 # The network item
 
 The network item shows the interface macOS routes traffic through: Wi-Fi by its signal,
-Ethernet by a wired glyph, and a dim glyph when nothing routes. A click opens a panel listing
+Ethernet by a wired glyph, and a dim icon when nothing routes. A click opens a panel listing
 every connected interface. This doc records what Zenith, an unbundled binary run from a
 LaunchAgent, can read for it on macOS 27, and what that costs. Probe: `zenith-probe network`
 (`Sources/zenith-probe/Network.swift`). Measured on Steve's M3 Pro, macOS 27.0.1 (26A434),
@@ -107,13 +107,16 @@ costs it 0.5 ms a second more.
   both, and an interrupted connection to airportd monitors again. Nothing polls. Installed, Zenith
   spent 150 ms of CPU in 120 s with everything else it runs, 1.25 ms a second, and logged no
   error.
-- **Glyph** (`networkGlyph`, `Sources/ZenithCore/Network.swift`), Material Design from Nerd
-  Fonts at 16 pt: on Wi-Fi, `wifi_strength_outline` and `wifi_strength_1` to `4` by level,
-  in Android's five steps from -100 to -55 dBm (`wifiLevel`); on Ethernet, `ethernet`; with
-  nothing routing, `wifi_strength_off_outline` when Wi-Fi is off, `wifi_strength_alert_outline`
-  when it is on, and `lan_disconnect` on a Mac without Wi-Fi, all dim. Any interface of
-  Ethernet type counts as Ethernet, USB and Thunderbolt adapters included.
-- **Redraws:** the bar renders only when the glyph or its color changes. The RSSI moves every
+- **Icon** (`networkIcon`, `Sources/ZenithCore/Network.swift`). On Wi-Fi, the SF Symbol `wifi`
+  as the native menu bar draws it, its arcs filled by level, in Android's five steps from -100
+  to -55 dBm (`wifiLevel`), drawn at 16 pt, the volume's size, and cropped to its ink
+  (`Sources/zenith/Symbols.swift`). On Ethernet, Material Design's `ethernet` from Nerd Fonts,
+  Omarchy 4's glyph, as SF Symbols has no Ethernet port. With nothing routing, all dim:
+  `wifi.slash` when Wi-Fi is off, `wifi.exclamationmark` when it is on, and `lan_disconnect`
+  on a Mac without Wi-Fi. Any interface of Ethernet type counts as Ethernet, USB and
+  Thunderbolt adapters included. Omarchy 4's own Wi-Fi glyphs, Material's `wifi_strength`
+  wedges, looked wrong beside the SF speaker; Steve chose the SF arcs on 2026-10-07.
+- **Redraws:** the bar renders only when the icon or its color changes. The RSSI moves every
   few seconds and the level rarely.
 - **Place:** from the bar's right end, the calendar, the battery, the network, then the
   volume, the native menu bar's order with the network in Wi-Fi's place.

@@ -206,11 +206,16 @@ import ZenithKit
         if let battery, let (image, size, ink) = batteryImage(battery, scale: scale) {
             items.append(("battery", Item(content: .image(image, size: size, ink: ink))))
         }
-        let route = networkGlyph(network.route)
-        let routeGlyph = NSAttributedString(string: route.glyph, attributes: [
-            .font: font(16), .foregroundColor: (route.dim ? theme.dim : theme.foreground).nsColor,
-        ])
-        items.append(("network", Item(content: .text(routeGlyph), center: .ink)))
+        let route = networkIcon(network.route), routeColor = route.dim ? theme.dim : theme.foreground
+        switch route.icon {
+        case let .glyph(glyph):
+            let text = NSAttributedString(string: glyph, attributes: [.font: font(16), .foregroundColor: routeColor.nsColor])
+            items.append(("network", Item(content: .text(text), center: .ink)))
+        case let .symbol(name, value):
+            if let (image, size, ink) = symbolImage(name, value: value, color: routeColor, scale: scale) {
+                items.append(("network", Item(content: .image(image, size: size, ink: ink))))
+            }
+        }
         let speaker = volumeGlyph(volume.level, muted: volume.muted)
         let glyph = NSAttributedString(string: speaker.glyph, attributes: [
             .font: NSFont.systemFont(ofSize: 16), .foregroundColor: (speaker.dim ? theme.dim : theme.foreground).nsColor,
@@ -241,6 +246,26 @@ import ZenithKit
         guard let image = battery.image(foreground: theme.foreground.nsColor, background: theme.background.nsColor,
                                         scale: scale) else { return nil }
         batteryImages[scale] = (key, image)
+        return image
+    }
+
+    private struct SymbolDrawing: Hashable {
+        var name: String
+        var value: Double?
+        var color: RGBA
+    }
+
+    /// The network's symbol, drawn again only when it changes, as the battery's image is.
+    private var symbolImages: [CGFloat: (key: SymbolDrawing, image: (CGImage, CGSize, ClosedRange<CGFloat>))] = [:]
+
+    /// At 16 pt, the size of the volume's speaker beside it.
+    private func symbolImage(_ name: String, value: Double?, color: RGBA,
+                             scale: CGFloat) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {
+        let key = SymbolDrawing(name: name, value: value, color: color)
+        if let cached = symbolImages[scale], cached.key == key { return cached.image }
+        guard let image = symbol(name, value: value, pointSize: 16, color: color.nsColor).flatMap({ inkImage($0, scale: scale) })
+        else { return nil }
+        symbolImages[scale] = (key, image)
         return image
     }
 
@@ -313,8 +338,12 @@ import ZenithKit
               let bar = bars[display], let frame = bar.frames[key],
               let screen = NSScreen.screens.first(where: { $0.displayID == display }) else { return popup.close() }
         let anchor = frame.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY)
+        var icon: NSImage?
+        if key == "network", case let .symbol(name, value) = networkIcon(network.route).icon {
+            icon = symbol(name, value: value, pointSize: 13, color: theme.accent.nsColor)
+        }
         popup.show(item, page: min(pages[key] ?? 0, item.pages.count - 1), key: key, display: display, anchor: anchor,
-                   screen: screen.frame, theme: theme)
+                   screen: screen.frame, theme: theme, icon: icon)
     }
 
     private func select(page: Int) {

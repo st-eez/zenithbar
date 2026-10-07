@@ -53,15 +53,21 @@ public func wifiLevel(rssi: Int) -> Int {
     min(4, max(0, (rssi + 100) * 4 / 45))
 }
 
-/// The Material Design glyph from Nerd Fonts, and whether it shows dim.
-public func networkGlyph(_ route: Route) -> (glyph: String, dim: Bool) {
+/// What the network item draws: an SF Symbol, filled to `value` from 0 to 1 when it has
+/// one, or a Material Design glyph from Nerd Fonts.
+public enum NetworkIcon: Equatable, Sendable {
+    case symbol(String, value: Double?)
+    case glyph(String)
+}
+
+/// The item's icon and whether it shows dim. Wi-Fi as the native menu bar draws it, its arcs
+/// filled by level; Ethernet as Omarchy's shell draws it, as SF Symbols has no Ethernet port.
+public func networkIcon(_ route: Route) -> (icon: NetworkIcon, dim: Bool) {
     switch route {
-    case let .wifi(rssi):
-        // wifi_strength_outline, then wifi_strength_1 to 4.
-        (["\u{F092F}", "\u{F091F}", "\u{F0922}", "\u{F0925}", "\u{F0928}"][wifiLevel(rssi: rssi)], false)
-    case .ethernet: ("\u{F0200}", false) // ethernet
-    case .offline(wifiPower: false): ("\u{F092E}", true) // wifi_strength_off_outline
-    case .offline(wifiPower: true): ("\u{F092B}", true) // wifi_strength_alert_outline
-    case .offline(wifiPower: nil): ("\u{F0319}", true) // lan_disconnect
+    case let .wifi(rssi): (.symbol("wifi", value: Double(wifiLevel(rssi: rssi)) / 4), false)
+    case .ethernet: (.glyph("\u{F0200}"), false) // ethernet
+    case .offline(wifiPower: false): (.symbol("wifi.slash", value: nil), true)
+    case .offline(wifiPower: true): (.symbol("wifi.exclamationmark", value: nil), true)
+    case .offline(wifiPower: nil): (.glyph("\u{F0319}"), true) // lan_disconnect
     }
 }
