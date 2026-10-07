@@ -9,8 +9,13 @@ Steve's dotfiles, `zenith/.config/zenith/plugins/agents`, is the first.
 - **Runs:** Zenith runs each plugin at launch, every `interval` seconds, after a wake and on a
   right click on its item, setting `ZENITH_EVENT` to `launch`, `interval`, `wake` or
   `refresh`. A run asked for while one goes is dropped, since that run reports, and a run
-  past 2 minutes is stopped. A run that exits with an error is logged. Plugins inherit
-  Zenith's environment, whose `PATH` the LaunchAgent sets to include Homebrew.
+  past 2 minutes is stopped. A run ends when the plugin exits: a child it leaves holding
+  standard output, as `cmd &` or ssh does, holds back no later run, and what the child prints
+  still reaches the bar until it closes the pipe. A run that exits with an error is logged.
+  Plugins inherit Zenith's environment, whose `PATH` the LaunchAgent sets to include Homebrew.
+- **Ceiling:** the 2 minute stop reaches only the plugin, not its children, since Foundation's
+  `Process` cannot start it in a process group of its own. Starting it with `posix_spawn` and
+  `POSIX_SPAWN_SETPGROUP`, then signalling the group, would stop them too.
 - **Output:** each line a plugin prints on standard output is one JSON object, an item:
   - `item`, its name, and `icon`, the glyph the bar shows, in JetBrains Mono Nerd Font.
   - `alert`, drawn in the theme's alert color, and `hidden`, off the bar.

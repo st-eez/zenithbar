@@ -64,11 +64,18 @@ import ZenithCore
                 }
             }
         }
-        output.fileHandleForReading.readabilityHandler = { handle in lines.feed(handle.availableData) }
-        process.terminationHandler = { [weak self] process in
+        // Read to the pipe's end, which comes when the plugin and any child it left holding its
+        // standard output have exited. The handler holds the pipe open until then.
+        output.fileHandleForReading.readabilityHandler = { _ in
+            let data = output.fileHandleForReading.availableData
+            guard data.isEmpty else { return lines.feed(data) }
             output.fileHandleForReading.readabilityHandler = nil
-            lines.feed(output.fileHandleForReading.readDataToEndOfFile())
+            try? output.fileHandleForReading.close()
             lines.finish()
+        }
+        // The run ends when the plugin exits, so a child still writing, as `cmd &` or ssh, holds
+        // back no later run.
+        process.terminationHandler = { [weak self] process in
             if process.terminationStatus != 0 {
                 log.notice("Plugin \(program, privacy: .public) exited with \(process.terminationStatus)")
             }
@@ -77,9 +84,14 @@ import ZenithCore
         do {
             try process.run()
         } catch {
+            // Otherwise the pipe's ends stay open, 3 fds a failed launch.
+            output.fileHandleForReading.readabilityHandler = nil
+            try? output.fileHandleForReading.close()
+            try? output.fileHandleForWriting.close()
             return log.error("Could not run plugin \(program, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
         running[index] = process
+        // Reaches the plugin alone, not its children (docs/plugins.md, ceiling).
         DispatchQueue.main.asyncAfter(deadline: .now() + 120) { [weak process] in
             if process?.isRunning == true { process?.terminate() }
         }
