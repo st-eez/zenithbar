@@ -102,10 +102,13 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   display and to a workspace on no listed display, and every display 1 when one is active.
   From a Kosmos without the field, Zenith joins by number.
 - **The other items:** the clock redraws at each minute's start on a timer set for it,
-  the battery on IOKit's power source notifications, and the volume on CoreAudio's
-  listeners for the default output device's volume and mute, following a new default
-  device. A click on the volume toggles mute through CoreAudio, and on the front app opens
-  Mission Control. An output without a volume or a mute property, as Steve's VG279QE5A
+  the battery on IOKit's power source notifications, the network on SystemConfiguration's
+  and CoreWLAN's notifications ([network.md](network.md)), and the volume on CoreAudio's
+  listeners for the default output device's volume and mute, following a new default device.
+  From the right end the order is the calendar, the battery, the network and the volume, the
+  native menu bar's order with the network in Wi-Fi's place. A click on the network opens
+  its panel, on the volume toggles mute through CoreAudio, and on the front app opens Mission
+  Control. An output without a volume or a mute property, as Steve's VG279QE5A
   monitors, whose level is set on the monitor, shows the full speaker, and a click does
   nothing there without mute.
 - **Look:** the fonts, sizes, paddings and colors of Steve's SketchyBar config of

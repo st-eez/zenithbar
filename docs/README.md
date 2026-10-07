@@ -10,4 +10,8 @@
 - [tray.md](tray.md): the native menu bar's status items on macOS 27, what a mirror of them
   in Zenith would read, capture and cost, and which tray apps Zenith could show natively.
   Code: `Sources/zenith-probe/Tray.swift`.
+- [network.md](network.md): the network item, how Zenith finds the interface macOS routes
+  through, what CoreWLAN gives it for Wi-Fi on macOS 27, the events and their cost, and the
+  Wi-Fi network's name, which needs Location Services.
+  Code: `Sources/zenith/Network.swift`, `Sources/ZenithCore/Network.swift`, `Sources/zenith-probe/Network.swift`.
 - [backlog.md](backlog.md): open work, most urgent first.

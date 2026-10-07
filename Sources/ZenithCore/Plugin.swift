@@ -12,11 +12,20 @@ public struct PluginItem: Decodable, Equatable, Sendable {
     /// The panel's pages, one at a time, the next on a middle click or a click on its tabs.
     public var pages: [Page]
 
+    /// An item Zenith builds itself, as the network item's panel.
+    public init(item: String, icon: String, alert: Bool = false, hidden: Bool = false, pages: [Page]) {
+        (self.item, self.icon, self.alert, self.hidden, self.pages) = (item, icon, alert, hidden, pages)
+    }
+
     public struct Page: Decodable, Equatable, Sendable {
         /// The tab that names the page among several.
         public var tab: String
         public var title: String
         public var rows: [Row]
+
+        public init(tab: String = "", title: String, rows: [Row]) {
+            (self.tab, self.title, self.rows) = (tab, title, rows)
+        }
     }
 
     public enum Tone: String, Decodable, Sendable {

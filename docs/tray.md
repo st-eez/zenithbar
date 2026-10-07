@@ -164,7 +164,7 @@ schemes and BetterDisplay's integration help in its binary. Nothing that changes
 | App | Drawn now | State Zenith can read | A click | Verdict |
 |---|---|---|---|---|
 | Battery, Clock, Sound (Control Center) | yes | IOKit power sources, the clock, CoreAudio, as Zenith does today | Zenith's own actions, as today | Native, done |
-| Wi-Fi | yes | CoreWLAN's interface: power and RSSI, and the network name with Location Services (unconfirmed here) | `AXPress` on `com.apple.menuextra.wifi` opens the system's menu, or a Zenith panel | Native |
+| Wi-Fi | yes | CoreWLAN's interface: power, RSSI, noise, rate and channel; the network name only with Location Services, which Zenith lacks ([network.md](network.md)) | A Zenith panel | Native, done, as a network item that shows Ethernet too |
 | Now Playing | yes | MediaRemote is private, and answers only Apple's own processes since macOS 15.4 (reported, unconfirmed here); Spotify and Music answer AppleScript | Play or pause through the player's AppleScript | Native for Spotify and Music; the system item otherwise |
 | Kosmos | yes | Kosmos already pushes its snapshot to Zenith | Kosmos's commands over its socket | Native |
 | Tailscale | yes | `tailscale status --json`: backend state, this Mac's IPs, peers, exit node, health | `tailscale up`, `down`, `set --exit-node` from a Zenith panel | Native |
@@ -184,8 +184,8 @@ schemes and BetterDisplay's integration help in its binary. Nothing that changes
 ## 8. Recommendation
 
 Build the items Steve wants at a glance natively, and leave the rest in the hidden native menu
-bar: Tailscale, KeepingYouAwake (or Zenith's own assertion), Wi-Fi and Kosmos, beside the
-clock, battery and volume Zenith has. They need no Screen Recording, cost nothing between
+bar: Tailscale, KeepingYouAwake (or Zenith's own assertion) and Kosmos, beside the clock,
+battery, volume and network Zenith has. They need no Screen Recording, cost nothing between
 changes, and a click does what Zenith chooses on the display it was made on. Of the other
 drawn items only Bitwarden, Teams, ChatGPT and OneDrive have nothing to read, and a mirrored
 click would still open their menus at the native place with the native menu bar shown, so a
@@ -193,3 +193,6 @@ mirror buys their glyphs alone. Build the mirror later only if Steve wants those
 Zenith: capture the active display's `MenuBarAgent` window once a second, read the slots when
 the capture changes, tint the glyphs, and forward clicks with `AXPress`
 ([backlog.md](backlog.md)).
+
+Steve chose native items over the mirror on 2026-10-07. Wi-Fi came first, built as a network
+item that shows Ethernet too ([network.md](network.md)).

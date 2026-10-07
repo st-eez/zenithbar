@@ -2,10 +2,11 @@ import AppKit
 import ZenithCore
 import ZenithKit
 
-/// A plugin item's panel, under the item: its page's title, the tabs naming the other pages,
-/// and its rows, drawn when it opens and when what it shows changes (docs/plugins.md). Above
-/// apps' windows and the bar, at a level of its own, as a window at the bar's level that
-/// takes a click comes up over the bar (docs/overview.md, clicks).
+/// A plugin item's or the network item's panel, under the item: its page's title, the tabs
+/// naming the other pages, and its rows, drawn when it opens and when what it shows changes
+/// (docs/plugins.md, docs/network.md). Above apps' windows and the bar, at a level of its
+/// own, as a window at the bar's level that takes a click comes up over the bar
+/// (docs/overview.md, clicks).
 @MainActor final class Popup {
     let panel: BarPanel
     private let view: PopupView

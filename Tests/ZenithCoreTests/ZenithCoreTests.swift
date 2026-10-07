@@ -101,6 +101,44 @@ import Testing
     #expect(volumeGlyph(0.1, muted: false).glyph == "\u{1002A4}")
 }
 
+@Test func wifiLevels() {
+    #expect(wifiLevel(rssi: -45) == 4)
+    #expect(wifiLevel(rssi: -55) == 4)
+    #expect(wifiLevel(rssi: -56) == 3)
+    #expect(wifiLevel(rssi: -66) == 3)
+    #expect(wifiLevel(rssi: -67) == 2)
+    #expect(wifiLevel(rssi: -78) == 1)
+    #expect(wifiLevel(rssi: -89) == 0)
+    #expect(wifiLevel(rssi: -120) == 0)
+}
+
+@Test func networkGlyphs() {
+    #expect(networkGlyph(.wifi(rssi: -45)) == ("\u{F0928}", false))
+    #expect(networkGlyph(.wifi(rssi: -70)).glyph == "\u{F0922}")
+    #expect(networkGlyph(.wifi(rssi: -95)).glyph == "\u{F092F}")
+    #expect(networkGlyph(.ethernet) == ("\u{F0200}", false))
+    #expect(networkGlyph(.offline(wifiPower: false)) == ("\u{F092E}", true))
+    #expect(networkGlyph(.offline(wifiPower: true)) == ("\u{F092B}", true))
+    #expect(networkGlyph(.offline(wifiPower: nil)).dim)
+}
+
+@Test func primaryServiceSkipsTunnels() {
+    let wifi = NetworkService(id: "W", interface: "en0", kind: .wifi, address: "192.168.1.50", router: "192.168.1.1")
+    let lan = NetworkService(id: "E", interface: "en10", kind: .ethernet, address: "192.168.1.60", router: "192.168.1.1")
+    let tailscale = NetworkService(id: "T", interface: "utun6", kind: .other, address: "100.64.0.1",
+                                   router: "100.64.0.1")
+    // Tailscale without an exit node, as measured: the store names en0.
+    #expect(primaryService([tailscale, wifi], primaryInterface: "en0", order: ["W", "T"]) == wifi)
+    #expect(primaryService([wifi, lan], primaryInterface: "en10", order: ["E", "W"]) == lan)
+    // A tunnel taking the default route leaves the first service in the order with a router.
+    #expect(primaryService([tailscale, wifi, lan], primaryInterface: "utun6", order: ["E", "W", "T"]) == lan)
+    #expect(primaryService([tailscale, wifi], primaryInterface: "utun6", order: []) == wifi)
+    #expect(primaryService([wifi], primaryInterface: nil, order: ["W"]) == nil)
+    #expect(Route(primary: lan, wifiRSSI: -50, wifiPower: true) == .ethernet)
+    #expect(Route(primary: wifi, wifiRSSI: -50, wifiPower: true) == .wifi(rssi: -50))
+    #expect(Route(primary: nil, wifiRSSI: 0, wifiPower: false) == .offline(wifiPower: false))
+}
+
 @Test func themeColors() {
     #expect(RGBA(hex: "#ff000080") == RGBA(hex: "#ff000080"))
     #expect(RGBA(hex: "#7aa2f7")?.alpha == 1)

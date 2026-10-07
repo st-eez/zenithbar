@@ -3,7 +3,7 @@ import ZenithCore
 import ZenithKit
 
 /// Holds what the bars show, and redraws them on each change: Kosmos's state, the clock,
-/// the battery, the volume, the plugins' items and the hovered item.
+/// the battery, the network, the volume, the plugins' items and the hovered item.
 @MainActor final class Controller {
     private var bars: [CGDirectDisplayID: Bar] = [:]
     /// Each screen's UUID, which Kosmos's snapshot names its displays by.
@@ -14,6 +14,7 @@ import ZenithKit
     private var settingsWatches: [DispatchSourceFileSystemObject] = []
     private var battery = Battery.read()
     private var volume: Volume!
+    private var network: Network!
     private var hovered: (key: String, display: CGDirectDisplayID)?
     private var clock: Timer?
     private lazy var kosmos = KosmosLink { [weak self] state in
@@ -35,6 +36,11 @@ import ZenithKit
         readSettings()
         watchSettings()
         volume = Volume { [weak self] in self?.render() }
+        network = Network { [weak self] glyph in
+            guard let self else { return }
+            if glyph { render() }
+            if let shown = popup.shown, shown.key == "network" { openPopup("network", display: shown.display) }
+        }
         Battery.watch { [weak self] in
             self?.battery = Battery.read()
             self?.render()
@@ -46,6 +52,7 @@ import ZenithKit
             MainActor.assumeIsolated {
                 self.battery = Battery.read()
                 self.volume.read()
+                self.network.read()
                 self.tick()
                 self.kosmos.refresh()
                 self.plugins.runAll(event: "wake")
@@ -70,7 +77,9 @@ import ZenithKit
         // A plugin gone from config.json takes its items off the bar, and their panel with them.
         pluginItems.removeAll { !plugins.owns($0.item.item) }
         pages = pages.filter { page in pluginItems.contains { $0.key == page.key } }
-        if let shown = popup.shown, !pluginItems.contains(where: { $0.key == shown.key }) { popup.close() }
+        if let shown = popup.shown, shown.key.hasPrefix("plugin."), !pluginItems.contains(where: { $0.key == shown.key }) {
+            popup.close()
+        }
     }
 
     /// Reads the settings again when their folder changes, as when an editor saves by
@@ -185,8 +194,8 @@ import ZenithKit
         return items
     }
 
-    /// From the bar's right end inward: the calendar, the battery, the volume, then the
-    /// plugins' items.
+    /// From the bar's right end inward: the calendar, the battery, the network, the volume,
+    /// then the plugins' items, the system items in the native menu bar's order.
     private func rightItems(scale: CGFloat) -> [(key: String, item: Item)] {
         var items: [(key: String, item: Item)] = []
         let (date, time) = clockText(Date())
@@ -197,6 +206,11 @@ import ZenithKit
         if let battery, let (image, size, ink) = batteryImage(battery, scale: scale) {
             items.append(("battery", Item(content: .image(image, size: size, ink: ink))))
         }
+        let route = networkGlyph(network.route)
+        let routeGlyph = NSAttributedString(string: route.glyph, attributes: [
+            .font: font(16), .foregroundColor: (route.dim ? theme.dim : theme.foreground).nsColor,
+        ])
+        items.append(("network", Item(content: .text(routeGlyph), center: .ink)))
         let speaker = volumeGlyph(volume.level, muted: volume.muted)
         let glyph = NSAttributedString(string: speaker.glyph, attributes: [
             .font: NSFont.systemFont(ofSize: 16), .foregroundColor: (speaker.dim ? theme.dim : theme.foreground).nsColor,
@@ -266,6 +280,8 @@ import ZenithKit
             NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Mission Control.app"))
         } else if key == "volume" {
             volume.toggleMute()
+        } else if key == "network" {
+            if popup.shown?.key == key { popup.close() } else { openPopup(key, display: display) }
         }
     }
 
@@ -292,7 +308,8 @@ import ZenithKit
     }
 
     private func openPopup(_ key: String, display: CGDirectDisplayID) {
-        guard let item = pluginItems.first(where: { $0.key == key })?.item, !item.hidden, !item.pages.isEmpty,
+        guard let item = key == "network" ? network.panel() : pluginItems.first(where: { $0.key == key })?.item,
+              !item.hidden, !item.pages.isEmpty,
               let bar = bars[display], let frame = bar.frames[key],
               let screen = NSScreen.screens.first(where: { $0.displayID == display }) else { return popup.close() }
         let anchor = frame.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY)

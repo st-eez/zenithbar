@@ -1,5 +1,6 @@
 // Probes for macOS behaviour the bar's design depends on. Each probe touches only windows it
-// creates itself, apart from `cost sketchybar` and `tray press`, and the header of its file says what it measures.
+// creates itself, apart from `cost sketchybar`, `tray press` and `network launchd`, which loads a
+// LaunchAgent of its own, and the header of its file says what it measures.
 import AppKit
 
 setvbuf(stdout, nil, _IOLBF, 0)
@@ -14,6 +15,7 @@ let commands: [(name: String, usage: String, run: @MainActor ([String]) -> Void)
     ("clicks", "clicks", { _ in clicks() }),
     ("popups", "popups [seconds]", { popups(seconds: $0.first.flatMap(Double.init) ?? 120) }),
     ("tray", "tray list|capture [runs] | tray watch [seconds] [own] | tray press <bundle id>", { tray($0) }),
+    ("network", "network read [runs] | network watch|cost [seconds] | network launchd <arguments>", { network($0) }),
 ]
 
 func usage() -> Never {

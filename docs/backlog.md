@@ -13,10 +13,17 @@
 - More styles from the mockups: `hug`, full width with its bottom corners flaring down into
   the screen's sides, and `framed`, a border round the other three edges; and panels that
   drop out of the bar as one shape, with the agents popup.
+- The Wi-Fi network's name in the network panel ([network.md](network.md)): Zenith calls
+  `CLLocationManager.requestWhenInUseAuthorization()` once and Steve allows it at the prompt.
+  First confirm macOS prompts for an executable it keys by path, and whether the grant
+  survives `script/install.sh` replacing the binary.
+- Run `zenith-probe network watch` while Steve plugs and unplugs Ethernet, turns Wi-Fi off and
+  on, changes networks, sleeps and wakes, and turns on a Tailscale exit node, and record what
+  the store and CoreWLAN sent and what the item showed ([network.md](network.md), untested).
 - Native tray items ([tray.md](tray.md)): Tailscale from `tailscale status --json`, with a
   panel to connect, disconnect and pick an exit node; a keep awake item, KeepingYouAwake's
   state from its `caffeinate` assertion and `keepingyouawake:///toggle`, or Zenith's own
-  `IOPMAssertion`; Wi-Fi from CoreWLAN.
+  `IOPMAssertion`.
 - If Steve wants the other apps' glyphs in Zenith, a tray mirror ([tray.md](tray.md)):
   capture the active display's MenuBarAgent window once a second, read its slots when the
   capture changes, tint the glyphs and forward clicks with `AXPress`. Needs Screen Recording
