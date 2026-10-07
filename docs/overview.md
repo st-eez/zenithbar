@@ -104,9 +104,10 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
 - **Icons:** solid, Steve's choice on 2026-10-07 after a line style, a thin speaker beside
   solid glyphs, read as clashing: SF Symbols at 14 pt (the filled speaker, Wi-Fi, a plugin's
   `symbol`, as the agents' sparkles), Material's solid Ethernet port at 16 pt
-  ([network.md](network.md)), and the battery, an outline with a solid fill inside to the
-  charge and the percent cut out of the fill, 25 by 14 pt; an outline holding only the
-  number was too faint. An SF Symbol drawn into a rect of its size stretches, as it draws
+  ([network.md](network.md)), and the battery, a solid body filled to the charge over a
+  fainter trough with the percent and the bolt cut out of it, 25 by 14 pt, its digits 10 to
+  11 pt. An outline holding only the number was too faint, and an outline around the fill
+  unwanted. An SF Symbol drawn into a rect of its size stretches, as it draws
   past its size, so each icon is drawn at its own size and cropped to its ink
   (`Sources/zenith/Symbols.swift`).
 - **The other items:** the clock redraws at each minute's start on a timer set for it,
