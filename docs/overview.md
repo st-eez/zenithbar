@@ -95,7 +95,10 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   on a workspace sends `workspace <name>`, each as one request on Kosmos's socket. Kosmos's
   snapshot names each display's CoreGraphics UUID, since Kosmos 638151c, and Zenith matches
   its screens by it; before, Zenith copied Kosmos's SketchyBar numbering, and the two
-  counted active displays differently.
+  counted active displays differently. Each workspace joins its display by its own
+  `displayUUID`, as Kosmos's display numbers are no key: it gives 0 both when it manages no
+  display and to a workspace on no listed display, and every display 1 when one is active.
+  From a Kosmos without the field, Zenith joins by number.
 - **The other items:** the clock redraws at each minute's start on a timer set for it,
   the battery on IOKit's power source notifications, and the volume on CoreAudio's
   listeners for the default output device's volume and mute, following a new default

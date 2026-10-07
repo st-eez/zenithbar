@@ -23,16 +23,17 @@ public struct WorkspaceRow: Equatable, Sendable {
     public var frontApp: String?
 }
 
-/// Each display's row, by its UUID. A workspace on no display Kosmos lists with a UUID, as one
-/// on no connected display, shows nowhere. `icons` maps an app's name to its glyph, with
-/// "Default" for apps it lacks.
+/// Each display's row, by its UUID. A workspace joins its display by its `displayUUID`, or by
+/// its display's number from a Kosmos without that field. One on no display Kosmos lists with
+/// a UUID, as one on no connected display, shows nowhere. `icons` maps an app's name to its
+/// glyph, with "Default" for apps it lacks.
 public func workspaceRows(_ state: KosmosState, icons: [String: String]) -> [String: WorkspaceRow] {
     let uuids = Dictionary(state.displays.compactMap { display in display.uuid.map { (display.id, $0) } },
                            uniquingKeysWith: { first, _ in first })
     var rows: [String: WorkspaceRow] = [:]
-    for uuid in uuids.values { rows[uuid] = WorkspaceRow(pills: [], frontApp: nil) }
+    for uuid in state.displays.compactMap(\.uuid) { rows[uuid] = WorkspaceRow(pills: [], frontApp: nil) }
     for workspace in state.workspaces {
-        guard let uuid = uuids[workspace.display] else { continue }
+        guard let uuid = workspace.displayUUID ?? uuids[workspace.display] else { continue }
         let glyphs = workspace.windows.map { icons[$0.app] ?? icons["Default"] ?? "" }
         let emphasis: Pill.Emphasis = workspace.focused ? .focused : workspace.shown ? .shown : .hidden
         rows[uuid]?.pills.append(Pill(name: workspace.name, glyphs: glyphs.joined(separator: " "), emphasis: emphasis))

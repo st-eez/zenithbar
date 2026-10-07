@@ -20,8 +20,13 @@ public struct KosmosState: Decodable, Equatable, Sendable {
 
     public struct Workspace: Decodable, Equatable, Sendable {
         public var name: String
-        /// The `id` of its display, 0 when no connected display holds it.
+        /// The `id` of its display, 0 when no connected display holds it. Kosmos gives 0 also
+        /// when it manages no display, and gives every display 1 when one is active, so
+        /// `displayUUID` is the join to trust.
         public var display: Int
+        /// CoreGraphics' UUID for the display it is laid out on; nil from a Kosmos before it
+        /// added the field, when Zenith joins by `display`.
+        public var displayUUID: String?
         public var shown: Bool
         /// Shown on the display that has focus.
         public var focused: Bool

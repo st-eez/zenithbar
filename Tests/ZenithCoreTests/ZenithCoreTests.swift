@@ -31,6 +31,25 @@ import Testing
     #expect(rows["B"]?.frontApp == "Desktop")
 }
 
+@Test func workspacesJoinDisplaysByUUID() throws {
+    // Two displays share number 1, as when Kosmos manages one of them; a workspace without a
+    // displayUUID, from an older Kosmos, joins by number.
+    let json = """
+        {"version":1,"displays":[{"id":1,"uuid":"A"},{"id":1,"uuid":"B"},{"id":2,"uuid":"C"}],
+         "workspaces":[
+           {"name":"1","display":1,"displayUUID":"B","shown":true,"focused":true,"windows":[]},
+           {"name":"2","display":1,"displayUUID":"A","shown":true,"focused":false,"windows":[]},
+           {"name":"3","display":0,"displayUUID":"A","shown":false,"focused":false,"windows":[]},
+           {"name":"4","display":2,"shown":true,"focused":false,"windows":[]},
+           {"name":"5","display":1,"displayUUID":"Gone","shown":false,"focused":false,"windows":[]}]}
+        """
+    let rows = workspaceRows(try #require(KosmosState.decode(Data(json.utf8))), icons: [:])
+    #expect(rows["A"]?.pills.map(\.name) == ["2", "3"])
+    #expect(rows["B"] == WorkspaceRow(pills: [Pill(name: "1", glyphs: "", emphasis: .focused)], frontApp: "Desktop"))
+    #expect(rows["C"]?.pills.map(\.name) == ["4"])
+    #expect(rows.count == 3)
+}
+
 @Test func otherVersionsAreIgnored() {
     #expect(KosmosState.decode(Data(#"{"version":2,"displays":[],"workspaces":[]}"#.utf8)) == nil)
 }
