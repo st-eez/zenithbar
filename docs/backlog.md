@@ -14,8 +14,9 @@
   the screen's sides, and `framed`, a border round the other three edges; and panels that
   drop out of the bar as one shape, with the agents popup.
 - The Wi-Fi network's name and the scan's names ([network.md](network.md), section 3):
-  Steve allows ZenithBar at Location Services' prompt, then confirm the name and the list
-  show, and whether the grant survives `script/install.sh` replacing the binary.
+  Steve clicks Allow in the panel of the signed ZenithBar.app and allows it at Location
+  Services' prompt, then confirm the name and the list show, and whether the grant survives
+  `script/install.sh` replacing the app.
 - Try the network panel's untested paths with Steve at the Mac ([network.md](network.md),
   untested): join a known network and a new one with its password, a wrong password, leave,
   forget, the Wi-Fi switch off and on, and the password field taking and giving back the

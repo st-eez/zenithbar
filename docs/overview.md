@@ -164,10 +164,15 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   layer with the style's outline, solid, without blur, which shows only on a translucent
   fill. Mockups of these and of `hug`, `framed` and a panel attached to the bar were made
   for Steve on 2026-10-06; he chose these three first.
-- **Install:** `script/install.sh` builds ZenithBar, copies it to `~/.local/bin/zenithbar`
-  and runs it from the LaunchAgent `io.github.st-eez.zenithbar`, which starts it at login
-  and again when it exits, at most every 10 s, launchd's default; errors go to
-  `~/Library/Logs/zenithbar.log`. `--replace-sketchybar` also stops SketchyBar's Homebrew
+- **Install:** `script/install.sh` builds ZenithBar into `/Applications/ZenithBar.app`, an
+  agent bundle (`LSUIElement`) with `Resources/Info.plist`, signed with the first Apple
+  Development certificate as Kosmos's bundle is, and runs its binary from the LaunchAgent
+  `io.github.st-eez.zenithbar`, which starts it at login and again when it exits, at most
+  every 10 s, launchd's default; errors go to `~/Library/Logs/zenithbar.log`. A bundle, as
+  Location Services asked nothing of the bare `~/.local/bin/zenithbar` earlier installs ran,
+  which the install removes ([network.md](network.md), section 3). The build is signed in
+  `.build/dist`, copied beside the installed app without the `.app` extension and renamed
+  over it once ZenithBar stops. `--replace-sketchybar` also stops SketchyBar's Homebrew
   service, and `--uninstall` removes ZenithBar. Kosmos looks ZenithBar's port up again after
   a restart, so the bar's state comes back without a restart of Kosmos.
 - **Settings reload** when `~/.config/zenithbar` or a file in it changes: an editor

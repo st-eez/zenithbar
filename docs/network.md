@@ -68,9 +68,14 @@ answers an unentitled process. Reads, median of 50:
   `requestWhenInUseAuthorization()` and Steve to allow it at the prompt. The probe asked for
   nothing, so whether macOS shows that prompt for a client keyed by path, and whether the
   grant survives `script/install.sh` replacing the binary at the same path, is untested.
-- ZenithBar links `Sources/zenithbar/Info.plist` into its binary that way, with the usage
-  strings, and asks (`requestWhenInUseAuthorization()`) only when Steve clicks Allow beside
-  the panel's "NETWORK NAMES NEED LOCATION SERVICES", which shows while nobody has answered.
+- ZenithBar asks (`requestWhenInUseAuthorization()`) only when Steve clicks Allow beside the
+  panel's "NETWORK NAMES NEED LOCATION SERVICES", which shows while nobody has answered.
+  From the bare executable with that Info.plist linked in, on 2026-10-07, Steve clicked Allow
+  in the installed panel and macOS showed no prompt. So `script/install.sh` now installs a
+  signed `/Applications/ZenithBar.app` with `Resources/Info.plist`
+  (`NSLocationUsageDescription`, `LSUIElement`), which Location Services can name and
+  remember, as it does Kosmos's bundle for Accessibility. Whether that prompts, and whether
+  the grant survives a reinstall signed with the same certificate, is next.
 - Creating a `CLLocationManager` and reading its `authorizationStatus` registered the
   executable as a locationd client without a prompt. Whether that lists it in System
   Settings' Location Services was not checked.

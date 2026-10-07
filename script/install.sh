@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
-# Builds ZenithBar from this checkout, installs it to ~/.local/bin/zenithbar and runs it from a
-# LaunchAgent that starts it at login and again whenever it exits (docs/overview.md).
+# Builds ZenithBar from this checkout into a signed ZenithBar.app, installs it to /Applications
+# and runs it from a LaunchAgent that starts it at login and again whenever it exits
+# (docs/overview.md). Location Services prompts for and remembers a signed bundle, and asked
+# nothing of the bare executable this installed before (docs/network.md).
+#
+# Signing uses ZENITHBAR_SIGN_IDENTITY, or the first Apple Development certificate in the
+# keychain, as Kosmos's script/bundle.sh does. Keep using the same certificate: the Location
+# Services grant is tied to it.
 #
 #   script/install.sh [--replace-sketchybar | --uninstall]
 #
 # --replace-sketchybar also stops SketchyBar's Homebrew service, so it no longer starts at
 # login; `brew services start sketchybar` brings it back. --uninstall stops ZenithBar and removes
-# its LaunchAgent and binary, leaving ~/.config/zenithbar.
+# its LaunchAgent and app, leaving ~/.config/zenithbar.
 set -euo pipefail
 usage="usage: script/install.sh [--replace-sketchybar | --uninstall]"
 mode=install
@@ -20,7 +26,10 @@ esac
 label=io.github.st-eez.zenithbar
 domain=gui/$(id -u)
 plist=$HOME/Library/LaunchAgents/$label.plist
-binary=$HOME/.local/bin/zenithbar
+app=/Applications/ZenithBar.app
+binary=$app/Contents/MacOS/zenithbar
+# Where earlier installs put the bare executable.
+old_binary=$HOME/.local/bin/zenithbar
 log=$HOME/Library/Logs/zenithbar.log
 
 stop() {
@@ -37,17 +46,30 @@ stop() {
 
 if [[ $mode == uninstall ]]; then
     stop
-    rm -f "$plist" "$binary"
+    rm -rf "$plist" "$app" "$old_binary"
     echo "ZenithBar is stopped and removed; ~/.config/zenithbar stays."
     exit 0
 fi
 
 cd "$(dirname "$0")/.."
+identity=${ZENITHBAR_SIGN_IDENTITY:-$(security find-identity -v -p codesigning | awk '/"Apple Development/ { print $2; exit }')}
+if [[ -z $identity ]]; then
+    echo "No signing certificate found. Set ZENITHBAR_SIGN_IDENTITY." >&2
+    exit 1
+fi
 swift build -c release
-mkdir -p "$(dirname "$binary")" "$(dirname "$plist")"
-# Copied beside the old binary and renamed over it, so a running ZenithBar keeps its file.
-cp "$(swift build -c release --show-bin-path)/zenithbar" "$binary.new"
-mv -f "$binary.new" "$binary"
+built=.build/dist/ZenithBar.app
+rm -rf "$built"
+mkdir -p "$built/Contents/MacOS" "$(dirname "$plist")"
+cp Resources/Info.plist "$built/Contents/Info.plist"
+cp "$(swift build -c release --show-bin-path)/zenithbar" "$built/Contents/MacOS/zenithbar"
+codesign --force --options runtime --timestamp=none --sign "$identity" "$built"
+codesign --verify --strict "$built"
+# Copied beside the installed app without the .app extension, so LaunchServices never
+# registers the copy, then renamed over it once ZenithBar stops, as Kosmos's install does.
+stage=/Applications/.ZenithBar-install
+rm -rf "$stage"
+ditto "$built" "$stage"
 
 cat > "$plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -84,8 +106,10 @@ if [[ $mode == replace ]]; then
     brew services stop sketchybar >/dev/null 2>&1 || launchctl bootout "$domain/sh.brew.sketchybar" 2>/dev/null || true
 fi
 stop
+rm -rf "$app" "$old_binary"
+mv "$stage" "$app"
 launchctl bootstrap "$domain" "$plist"
-echo "ZenithBar runs from $binary under the LaunchAgent $label; errors go to $log."
+echo "ZenithBar runs from $app, signed by $identity, under the LaunchAgent $label; errors go to $log."
 if pgrep -x sketchybar >/dev/null; then
     echo "SketchyBar is running too; script/install.sh --replace-sketchybar stops it for good."
 elif [[ -f $HOME/Library/LaunchAgents/sh.brew.sketchybar.plist ]]; then

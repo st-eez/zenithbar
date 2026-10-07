@@ -19,7 +19,7 @@
   Code: `Sources/zenithbar/Network.swift`, `Sources/zenithbar/NetworkPanel.swift`,
   `Sources/zenithbar/NetworkStats.swift`, `Sources/zenithbar/Wifi.swift`,
   `Sources/zenithbar/PanelKit.swift`, `Sources/zenithbar/Panel.swift`,
-  `Sources/zenithbar/Info.plist`, `Sources/ZenithBarCore/Network.swift`,
+  `Resources/Info.plist`, `script/install.sh`, `Sources/ZenithBarCore/Network.swift`,
   `Sources/ZenithBarCore/NetworkPanel.swift`, `Sources/CZenithBar/`,
   `Sources/zenithbar-probe/Network.swift`, `Sources/zenithbar-probe/NetworkPanel.swift`,
   `Sources/zenithbar-probe/Focus.swift`.
