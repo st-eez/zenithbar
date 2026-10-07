@@ -5,7 +5,9 @@ runs it and reads what it prints; it needs no library and no socket. The agents 
 Steve's dotfiles, `zenith/.config/zenith/plugins/agents`, is the first.
 
 - **Config:** `plugins` in `~/.config/zenith/config.json` lists each as `command`, the
-  program then its arguments with `~` for the home folder, and `interval` in seconds.
+  program then its arguments with `~` for the home folder, and `interval` in seconds. Zenith
+  knows a plugin by its command, so a change to the list keeps the runs going on, and a
+  plugin taken out takes its items off the bar and closes their panel.
 - **Runs:** Zenith runs each plugin at launch, every `interval` seconds, after a wake and on a
   right click on its item, setting `ZENITH_EVENT` to `launch`, `interval`, `wake` or
   `refresh`. A run asked for while one goes is dropped, since that run reports, and a run

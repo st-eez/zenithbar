@@ -66,6 +66,10 @@ import ZenithCore
             if let config = Config(json: data) { self.config = config } else { log.error("Could not read config.json") }
         }
         plugins.configure(config.plugins)
+        // A plugin gone from config.json takes its items off the bar, and their panel with them.
+        pluginItems.removeAll { !plugins.owns($0.item.item) }
+        pages = pages.filter { page in pluginItems.contains { $0.key == page.key } }
+        if let shown = popup.shown, !pluginItems.contains(where: { $0.key == shown.key }) { popup.close() }
     }
 
     /// Reads the settings again when their folder changes, as when an editor saves by
