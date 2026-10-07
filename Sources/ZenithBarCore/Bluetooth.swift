@@ -66,10 +66,16 @@ public enum BluetoothIcon: Equatable, Sendable {
 }
 
 /// system_profiler's JSON as the panel shows it, or nil when it is unreadable. A device whose
-/// name is empty or an address is left out, as Omarchy's `hasHumanName`.
+/// name is empty or an address is left out, as Omarchy's `hasHumanName`, and so is one with
+/// neither a product ID nor a type, as System Settings leaves it out: AirPods' Bluetooth LE
+/// link for batteries and proximity, listed as connected under a changing address while the
+/// AirPods themselves were not, and a paired iPhone (2026-10-07, docs/bluetooth.md).
 public func bluetoothState(json: Data) -> BluetoothState? {
     guard var state = parse(json) else { return nil }
-    state.devices.removeAll { $0.name.trimmingCharacters(in: .whitespaces).isEmpty || bluetoothAddress(uid: $0.name) != nil }
+    state.devices.removeAll {
+        $0.name.trimmingCharacters(in: .whitespaces).isEmpty || bluetoothAddress(uid: $0.name) != nil
+            || ($0.productID == nil && $0.minorType == nil)
+    }
     state.devices.sort { a, b in
         let order = a.name.localizedStandardCompare(b.name)
         return order == .orderedSame ? a.address < b.address : order == .orderedAscending

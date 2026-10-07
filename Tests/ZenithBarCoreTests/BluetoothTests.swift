@@ -3,7 +3,9 @@ import Testing
 @testable import ZenithBarCore
 
 // system_profiler's output on Steve's Mac on 2026-10-07 (docs/bluetooth.md), with the AirPods and
-// the mouse connected as they would read, and a device named by its address.
+// the mouse connected as they would read, a device named by its address, and two entries System
+// Settings leaves out: the AirPods' Bluetooth LE link, listed as connected under a changing
+// address while the AirPods were not, and "steez", with no product ID or type.
 private let profile = Data("""
     {"SPBluetoothDataType": [{"controller_properties": {"controller_address": "60:1A:2B:3C:4D:02",
         "controller_state": "attrib_on"},
@@ -11,7 +13,9 @@ private let profile = Data("""
         {"steez AirPods ANC": {"device_address": "7C:1A:2B:3C:4D:03", "device_batteryLevelCase": "21%",
           "device_batteryLevelLeft": "100%", "device_batteryLevelRight": "94%", "device_minorType": "Headphones",
           "device_productID": "0x201B", "device_vendorID": "0x004C"}},
-        {"MX Master 2S": {"device_address": "DB:1A:2B:3C:4D:06", "device_minorType": "Mouse"}}],
+        {"MX Master 2S": {"device_address": "DB:1A:2B:3C:4D:06", "device_minorType": "Mouse"}},
+        {"steez AirPods ANC": {"device_address": "C1:1A:2B:3C:4D:05", "device_batteryLevelLeft": "100%",
+          "device_services": "0x400000 < BLE >"}}],
       "device_not_connected": [
         {"Xbox Wireless Controller": {"device_address": "AC:1A:2B:3C:4D:04", "device_minorType": "Gamepad"}},
         {"steez": {"device_address": "00:1A:2B:3C:4D:01", "device_rssi": "-55"}},
@@ -24,7 +28,7 @@ private let profile = Data("""
     let state = try #require(bluetoothState(json: profile))
     #expect(state.powered == true)
     #expect(state.connected.map(\.name) == ["MX Master 2S", "steez AirPods ANC"])
-    #expect(state.available.map(\.name) == ["AULA F75Max-1", "steez", "Xbox Wireless Controller"])
+    #expect(state.available.map(\.name) == ["AULA F75Max-1", "Xbox Wireless Controller"])
     let pods = try #require(state.connected.last)
     #expect(pods == BluetoothDevice(address: "7C:1A:2B:3C:4D:03", name: "steez AirPods ANC", connected: true, vendorID: 0x004C,
                                     productID: 0x201B, minorType: "Headphones", battery: 94))
@@ -32,7 +36,7 @@ private let profile = Data("""
     #expect(state.available.first?.battery == nil)
     #expect(state.connected.first?.battery == nil)
     // The sound panel's lookup keeps every device, the one named by its address too.
-    #expect(bluetoothDevices(json: profile).count == 6)
+    #expect(bluetoothDevices(json: profile).count == 7)
     #expect(bluetoothState(json: Data("nope".utf8)) == nil)
 }
 

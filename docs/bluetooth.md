@@ -103,6 +103,11 @@ connected.
   changes.
 - **CONNECTED:** connected devices on the current row's fill, each with its icon and its battery
   under its name. A click disconnects it.
+- **Left out:** a device with neither a product ID nor a type, as System Settings leaves it
+  out. On 2026-10-07 the panel showed the AirPods as connected from such an entry, their
+  Bluetooth LE link for batteries and proximity (`< BLE >` services, an address that changed
+  between reads) while the AirPods themselves (7C:1A:2B:3C:4D:03) were not connected, and a
+  paired "steez" with no type that System Settings does not list.
 - **MY DEVICES:** paired devices not connected, under System Settings' name for them, as
   AVAILABLE read as nearby when most were not (Steve, 2026-10-07): a Mac cannot tell a paired
   device is in range without connecting. A click connects one. Omarchy calls these PAIRED and
