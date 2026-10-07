@@ -29,4 +29,10 @@
   Code: `Sources/zenithbar/Sound.swift`, `Sources/zenithbar/SoundPanel.swift`,
   `Sources/zenithbar/PanelKit.swift`, `Sources/zenithbar/Controller.swift`,
   `Sources/ZenithBarCore/Sound.swift`, `Sources/zenithbar-probe/Sound.swift`.
+- [bluetooth.md](bluetooth.md): the Bluetooth item and panel, what system_profiler, IOBluetooth
+  and CoreBluetooth give on macOS 27 and which need Bluetooth permission, the private power
+  call, battery levels, the events and their cost, and what stays untested.
+  Code: `Sources/zenithbar/Bluetooth.swift`, `Sources/zenithbar/BluetoothPanel.swift`,
+  `Sources/zenithbar/Controller.swift`, `Sources/ZenithBarCore/Bluetooth.swift`,
+  `Resources/Info.plist`, `Sources/zenithbar-probe/Bluetooth.swift`.
 - [backlog.md](backlog.md): open work, most urgent first.

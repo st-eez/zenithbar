@@ -191,59 +191,6 @@ public func volumePercent(_ volume: Double?) -> String { volume.map { "\(Int(($0
 /// `volume` moved by `steps` of 5%, as Omarchy's scroll and keys step, kept from 0 to 1.
 public func stepVolume(_ volume: Double, steps: Int) -> Double { min(1, max(0, volume + Double(steps) * 0.05)) }
 
-// MARK: Bluetooth
-
-/// What Bluetooth knows of a paired device, from `system_profiler SPBluetoothDataType -json`.
-public struct BluetoothDevice: Equatable, Sendable {
-    public var vendorID: Int?
-    public var productID: Int?
-    /// Bluetooth's minor device class, as "Headphones".
-    public var minorType: String?
-
-    public init(vendorID: Int? = nil, productID: Int? = nil, minorType: String? = nil) {
-        self.vendorID = vendorID
-        self.productID = productID
-        self.minorType = minorType
-    }
-}
-
-/// The paired devices in system_profiler's JSON, by address in capitals with colons.
-public func bluetoothDevices(json: Data) -> [String: BluetoothDevice] {
-    guard let root = (try? JSONSerialization.jsonObject(with: json)) as? [String: Any] else { return [:] }
-    var found: [String: BluetoothDevice] = [:]
-    func hex(_ value: Any?) -> Int? { (value as? String).flatMap { Int($0.replacingOccurrences(of: "0x", with: ""), radix: 16) } }
-    for controller in root["SPBluetoothDataType"] as? [[String: Any]] ?? [] {
-        // Connected and not connected devices are lists of one-entry objects keyed by name.
-        for case let list as [[String: [String: Any]]] in controller.values {
-            for info in list.flatMap(\.values) {
-                guard let address = info["device_address"] as? String else { continue }
-                found[address.uppercased()] = BluetoothDevice(vendorID: hex(info["device_vendorID"]),
-                                                              productID: hex(info["device_productID"]),
-                                                              minorType: info["device_minorType"] as? String)
-            }
-        }
-    }
-    return found
-}
-
-/// The Bluetooth address a CoreAudio UID starts with, as "7C-1A-2B-3C-4D-03:output", in
-/// capitals with colons; nil for a UID without one.
-public func bluetoothAddress(uid: String) -> String? {
-    let head = uid.prefix(17).uppercased()
-    let parts = head.split(whereSeparator: { $0 == "-" || $0 == ":" })
-    guard head.count == 17, parts.count == 6, parts.allSatisfy({ $0.count == 2 && UInt8($0, radix: 16) != nil }) else { return nil }
-    return parts.joined(separator: ":")
-}
-
-/// Apple's AirPods by Bluetooth product ID, vendor 0x004C, as their SF Symbols.
-private let airpodsModels: [Int: String] = [
-    0x2002: "airpods", 0x200F: "airpods", // AirPods, 2nd generation
-    0x2013: "airpods.gen3",
-    0x2019: "airpods.gen4", 0x201B: "airpods.gen4", // AirPods 4, and with noise cancellation
-    0x200E: "airpodspro", 0x2014: "airpodspro", 0x2024: "airpodspro", // Pro, Pro 2, Pro 2 USB-C
-    0x200A: "airpodsmax", 0x201F: "airpodsmax", // Max, Max USB-C
-]
-
 /// The SF Symbol a device's row shows, and the speaker's in place of the speaker glyph for
 /// headphones: the AirPods' model by their product ID, `airpods` for other Bluetooth devices
 /// named "AirPods", `headphones` for other headphones, else by how it connects.
@@ -263,9 +210,7 @@ public func deviceSymbol(_ device: AudioDevice, _ direction: AudioDirection, blu
 /// AirPods' or headphones' symbol, or nil for a device that is neither. Names, which Steve can
 /// edit, count only where Bluetooth gives no product, as Omarchy's `isHeadphones` reads them.
 public func headphonesSymbol(_ device: AudioDevice, bluetooth: BluetoothDevice?) -> String? {
-    if let bluetooth, bluetooth.vendorID == 0x004C, let model = bluetooth.productID.flatMap({ airpodsModels[$0] }) {
-        return model
-    }
+    if let model = bluetooth.flatMap(airpodsSymbol) { return model }
     let name = device.name.lowercased()
     if device.transport == .bluetooth, name.contains("airpods") { return "airpods" }
     // The headphone jack, a data source of the built-in output.

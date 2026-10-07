@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- ZenithBar.app's, which script/install.sh builds: Location Services prompts for and
-     remembers a signed bundle, and asked nothing of the bare executable (docs/network.md). -->
+     remembers a signed bundle, and asked nothing of the bare executable (docs/network.md).
+     Bluetooth's prompt needs its usage string and no entitlement (docs/bluetooth.md). -->
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
@@ -24,5 +25,7 @@
     <string>ZenithBar shows the Wi-Fi network's name and the networks nearby, which macOS gives only to apps Location Services allows.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>ZenithBar shows the Wi-Fi network's name and the networks nearby, which macOS gives only to apps Location Services allows.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>ZenithBar follows your Bluetooth devices connecting and disconnecting, and connects, disconnects and turns Bluetooth on and off from its Bluetooth panel.</string>
 </dict>
 </plist>

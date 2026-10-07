@@ -146,8 +146,10 @@ private func with(_ device: AudioDevice, running: Bool? = nil, inputMuted: Bool?
             "device_minorType": "Gamepad"}}]}]}
         """.utf8)
     let found = bluetoothDevices(json: json)
-    #expect(found["7C:1A:2B:3C:4D:03"] == BluetoothDevice(vendorID: 0x004C, productID: 0x201B, minorType: "Headphones"))
-    #expect(found["AC:1A:2B:3C:4D:04"] == BluetoothDevice(minorType: "Gamepad"))
+    #expect(found["7C:1A:2B:3C:4D:03"] == BluetoothDevice(address: "7C:1A:2B:3C:4D:03", name: "steez AirPods ANC", connected: true,
+                                                          vendorID: 0x004C, productID: 0x201B, minorType: "Headphones"))
+    #expect(found["AC:1A:2B:3C:4D:04"] == BluetoothDevice(address: "AC:1A:2B:3C:4D:04", name: "Xbox Wireless Controller",
+                                                          minorType: "Gamepad"))
     #expect(found.count == 2)
     #expect(bluetoothDevices(json: Data("nope".utf8)).isEmpty)
     #expect(bluetoothAddress(uid: "7c-1a-2b-3c-4d-03:output") == "7C:1A:2B:3C:4D:03")

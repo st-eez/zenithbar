@@ -106,8 +106,8 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   when one is active. From a Kosmos without the field, ZenithBar joins by number.
 - **Icons:** solid, Steve's choice on 2026-10-07 after a line style, a thin speaker beside
   solid glyphs, read as clashing: SF Symbols at 14 pt (the filled speaker or AirPods, the
-  microphone, Wi-Fi, a plugin's `symbol`, as the agents' sparkles), Material's solid Ethernet port at 16 pt
-  ([network.md](network.md)), and the battery, a solid body filled to the charge over a
+  microphone, Wi-Fi, a plugin's `symbol`, as the agents' sparkles), Material's solid Ethernet port and
+  Bluetooth glyphs at 16 pt ([network.md](network.md), [bluetooth.md](bluetooth.md)), and the battery, a solid body filled to the charge over a
   fainter trough with the percent and the bolt cut out of it, 25 by 14 pt, its digits 8.5 to
   10 pt and a 8.5 pt bolt centered together, with room around them, as larger crowded the
   body. An outline holding only the number was too faint, and an outline around the fill
@@ -116,12 +116,14 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   (`Sources/zenithbar/Symbols.swift`).
 - **The other items:** the clock redraws at each minute's start on a timer set for it,
   the battery on IOKit's power source notifications, the network on SystemConfiguration's
-  and CoreWLAN's notifications ([network.md](network.md)), and the speaker and the microphone
-  on CoreAudio's listeners ([sound.md](sound.md)). From the right end the order is the
-  calendar, the battery, the network, the speaker and the microphone, the native menu bar's
-  order with the network in Wi-Fi's place, then the plugins' items. A click on the network
-  opens its panel, on the speaker opens the sound panel, and on the front app opens Mission
-  Control; a right click on the speaker mutes it, and a click on the microphone mutes it. The
+  and CoreWLAN's notifications ([network.md](network.md)), the speaker and the microphone
+  on CoreAudio's listeners ([sound.md](sound.md)), and Bluetooth on CoreBluetooth's state and
+  IOBluetooth's connections once Bluetooth is allowed ([bluetooth.md](bluetooth.md)). From the
+  right end the order is the calendar, the battery, the network, Bluetooth, the speaker and the
+  microphone, the native menu bar's order with the network in Wi-Fi's place and Bluetooth where
+  Omarchy puts it, then the plugins' items. A click on the network opens its panel, on
+  Bluetooth opens the Bluetooth panel, on the speaker opens the sound panel, and on the front
+  app opens Mission Control; a right click on the speaker mutes it, and a click on the microphone mutes it. The
   microphone shows only while an app uses an input device or a mute is on. An output without
   a volume or a mute property, as Steve's monitors, whose level is set on the monitor, shows
   the full speaker.
@@ -133,7 +135,8 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   font, each taking the first click, as the panel is never active. It takes the keyboard
   only while a password field is open, without making ZenithBar the front app, and gives it
   back by ordering out and in ([network.md](network.md), the panel's focus). The sound panel
-  is built from the same views and the slider it adds ([sound.md](sound.md)). NSPopover and NSMenu were left out, as the theme cannot color
+  is built from the same views and the slider it adds ([sound.md](sound.md)), and the Bluetooth
+  panel from the same views ([bluetooth.md](bluetooth.md)). NSPopover and NSMenu were left out, as the theme cannot color
   their material.
 - **Look:** the fonts, sizes, paddings and colors of Steve's SketchyBar config of
   2026-10-06, and its app glyph map, copied into `AppIcons.swift`. Colors come from

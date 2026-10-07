@@ -32,6 +32,12 @@
   whether the AirPods' output device lists under INPUT during a call, and whether it keeps
   counting as a microphone in use after the call, which `IsRunningSomewhere` would show as live
   while only music plays (sound.md, section 2's ceiling).
+- Try the Bluetooth panel with Steve at the Mac ([bluetooth.md](bluetooth.md), untested): allow
+  ZenithBar's Bluetooth prompt on the panel's first open and check the log for the events
+  starting; connect and disconnect the AirPods and the Beats from the panel, and the MX Master or
+  AULA keyboard, which are Bluetooth LE and may refuse IOBluetooth's connection; check the item's
+  connected glyph follows, the rows' batteries, and how far system_profiler lags the
+  notifications; turn Bluetooth off and on from the switch when no keyboard or mouse needs it.
 - Joining a hidden network by name, and an enterprise network with a user name, from the
   network panel; today a hidden network's row does nothing, and an enterprise network's says
   to join it in System Settings once.

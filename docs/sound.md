@@ -70,9 +70,10 @@ none hidden:
   permission, in 62 to 65 ms. Steve's "steez AirPods ANC" read vendor 0x004C, product 0x201B,
   AirPods 4 with noise cancellation, minor type Headphones; his "steez studio beatz" vendor
   0x290B, product 0x0200, Headphones. ZenithBar asks once for each Bluetooth address it has not
-  seen, off the main thread (`Sound.lookUpBluetooth`). IOBluetooth was left out untried, as
-  macOS's Bluetooth privacy permission covers it and ZenithBar has no usage string for it.
-- **Symbols** (`headphonesSymbol`, `Sources/ZenithBarCore/Sound.swift`): Apple's product IDs
+  seen, off the main thread (`Sound.lookUpBluetooth`). IOBluetooth needs Bluetooth permission
+  ([bluetooth.md](bluetooth.md)), which the sound panel does without.
+- **Symbols** (`headphonesSymbol`, `Sources/ZenithBarCore/Sound.swift`, and `airpodsSymbol`,
+  `Sources/ZenithBarCore/Bluetooth.swift`, which the Bluetooth panel shares): Apple's product IDs
   give `airpods` (0x2002, 0x200F), `airpods.gen3` (0x2013), `airpods.gen4` (0x2019, 0x201B),
   `airpodspro` (0x200E, 0x2014, 0x2024) and `airpodsmax` (0x200A, 0x201F); all five symbols
   exist on macOS 27. A Bluetooth device named "AirPods" that the table lacks shows `airpods`,
