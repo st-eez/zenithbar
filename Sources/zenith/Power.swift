@@ -4,7 +4,7 @@ import CoreAudio
 import IOKit.ps
 
 /// The internal battery's charge and whether it is on AC power, nil without a battery.
-struct Battery: Equatable {
+struct Battery: Hashable {
     var percent: Int
     var charging: Bool
 

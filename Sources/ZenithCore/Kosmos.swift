@@ -3,17 +3,16 @@ import Foundation
 /// Kosmos's bar snapshot, sent whole on every change (Kosmos's docs/ipc.md). A new `version`
 /// may rename or remove fields, and new fields can appear in any version.
 public struct KosmosState: Decodable, Equatable, Sendable {
+    // Only the fields Zenith reads, so a change Kosmos makes to the others cannot make it
+    // reject a snapshot.
+
     public struct Display: Decodable, Equatable, Sendable {
         /// SketchyBar's number for the display, which `displayNumber` gives Zenith's screens.
         public var id: Int
-        public var name: String
     }
 
     public struct Window: Decodable, Equatable, Sendable {
-        public var id: UInt32
         public var app: String
-        public var x: Int
-        public var y: Int
     }
 
     public struct Workspace: Decodable, Equatable, Sendable {
@@ -28,9 +27,7 @@ public struct KosmosState: Decodable, Equatable, Sendable {
     }
 
     public struct Focus: Decodable, Equatable, Sendable {
-        public var window: UInt32
         public var app: String
-        public var workspace: String
     }
 
     public static let version = 1

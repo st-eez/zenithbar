@@ -21,6 +21,10 @@ import ZenithCore
     }
 
     func start() {
+        guard kosmos.start() else {
+            log.error("Another process holds \(KosmosLink.portName, privacy: .public), as another Zenith does; exiting")
+            exit(1)
+        }
         readSettings()
         watchSettings()
         volume = Volume { [weak self] in self?.render() }
@@ -41,7 +45,6 @@ import ZenithCore
         }
         placeBars()
         tick()
-        kosmos.start()
     }
 
     static let settings = URL(fileURLWithPath: NSHomeDirectory() + "/.config/zenith")
@@ -71,9 +74,10 @@ import ZenithCore
                                                                    eventMask: [.write, .delete, .rename], queue: .main)
             source.setEventHandler { [weak self] in
                 MainActor.assumeIsolated {
+                    // Watched again first, so a write while the settings are read is seen.
+                    self?.watchSettings()
                     self?.readSettings()
                     self?.render()
-                    self?.watchSettings()
                 }
             }
             source.setCancelHandler { close(fd) }
@@ -161,8 +165,7 @@ import ZenithCore
         let calendar = joined(NSAttributedString(string: date, attributes: bold),
                               NSAttributedString(string: time, attributes: bold), gap: 8)
         items.append(("calendar", Item(content: .text(calendar))))
-        if let battery, let (image, size, ink) = battery.image(foreground: theme.foreground.nsColor,
-                                                               background: theme.background.nsColor, scale: scale) {
+        if let battery, let (image, size, ink) = batteryImage(battery, scale: scale) {
             items.append(("battery", Item(content: .image(image, size: size, ink: ink))))
         }
         let speaker = volumeGlyph(volume.level, muted: volume.muted)
@@ -171,6 +174,25 @@ import ZenithCore
         ])
         items.append(("volume", Item(content: .text(glyph), center: .ink)))
         return items
+    }
+
+    private struct BatteryDrawing: Hashable {
+        var battery: Battery
+        var foreground: RGBA, background: RGBA
+        var scale: CGFloat
+    }
+
+    /// The battery's image, drawn again only when what it shows changes: an item's image
+    /// compares by identity, so a new image redraws its layer on every render.
+    private var batteryImages: [CGFloat: (key: BatteryDrawing, image: (CGImage, CGSize, ClosedRange<CGFloat>))] = [:]
+
+    private func batteryImage(_ battery: Battery, scale: CGFloat) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {
+        let key = BatteryDrawing(battery: battery, foreground: theme.foreground, background: theme.background, scale: scale)
+        if let cached = batteryImages[scale], cached.key == key { return cached.image }
+        guard let image = battery.image(foreground: theme.foreground.nsColor, background: theme.background.nsColor,
+                                        scale: scale) else { return nil }
+        batteryImages[scale] = (key, image)
+        return image
     }
 
     /// `first` then `second` with `gap` points between their ink, kerning away the blank the

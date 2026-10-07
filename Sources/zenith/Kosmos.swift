@@ -20,12 +20,10 @@ final class KosmosLink: Sendable {
         self.received = received
     }
 
-    func start() {
+    /// False when another process holds Zenith's port, as another Zenith does.
+    func start() -> Bool {
         let port = zenith_mach_register(Self.portName)
-        guard port != MACH_PORT_NULL else {
-            log.error("Could not register \(Self.portName, privacy: .public); is another Zenith running?")
-            return
-        }
+        guard port != MACH_PORT_NULL else { return false }
         let source = DispatchSource.makeMachReceiveSource(port: port, queue: queue)
         source.setEventHandler { [self] in
             // Only the newest of the snapshots waiting matters, as each holds the whole state.
@@ -40,6 +38,7 @@ final class KosmosLink: Sendable {
         source.activate()
         self.source = source
         refresh()
+        return true
     }
 
     /// Asks Kosmos for its state, as after a wake, when pushes may have been missed.
@@ -73,6 +72,10 @@ final class KosmosLink: Sendable {
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else { return nil }
         defer { close(fd) }
+        // A Kosmos that quits or restarts mid-request closes its end; without this the write
+        // raises SIGPIPE, which ends Zenith, as Kosmos's own client guards against.
+        var on: Int32 = 1
+        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
         var timeout = timeval(tv_sec: 2, tv_usec: 0)
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
         setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))

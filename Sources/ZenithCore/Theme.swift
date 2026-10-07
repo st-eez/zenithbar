@@ -1,7 +1,7 @@
 import Foundation
 
 /// An sRGB color, each channel from 0 to 1.
-public struct RGBA: Equatable, Sendable {
+public struct RGBA: Hashable, Sendable {
     public var red, green, blue, alpha: Double
 
     /// "#rrggbb" or "#rrggbbaa".
