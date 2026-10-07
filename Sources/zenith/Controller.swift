@@ -258,12 +258,13 @@ import ZenithKit
     /// The network's symbol, drawn again only when it changes, as the battery's image is.
     private var symbolImages: [CGFloat: (key: SymbolDrawing, image: (CGImage, CGSize, ClosedRange<CGFloat>))] = [:]
 
-    /// At 16 pt, the size of the volume's speaker beside it.
+    /// At 14 pt, about 12 pt tall, as the battery and the Ethernet glyph; at 16 pt its arcs
+    /// outweighed the speaker beside it.
     private func symbolImage(_ name: String, value: Double?, color: RGBA,
                              scale: CGFloat) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {
         let key = SymbolDrawing(name: name, value: value, color: color)
         if let cached = symbolImages[scale], cached.key == key { return cached.image }
-        guard let image = symbol(name, value: value, pointSize: 16, color: color.nsColor).flatMap({ inkImage($0, scale: scale) })
+        guard let image = symbol(name, value: value, pointSize: 14, color: color.nsColor).flatMap({ inkImage($0, scale: scale) })
         else { return nil }
         symbolImages[scale] = (key, image)
         return image

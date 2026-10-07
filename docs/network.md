@@ -109,7 +109,7 @@ costs it 0.5 ms a second more.
   error.
 - **Icon** (`networkIcon`, `Sources/ZenithCore/Network.swift`). On Wi-Fi, the SF Symbol `wifi`
   as the native menu bar draws it, its arcs filled by level, in Android's five steps from -100
-  to -55 dBm (`wifiLevel`), drawn at 16 pt, the volume's size, and cropped to its ink
+  to -55 dBm (`wifiLevel`), drawn at 14 pt, about 12 pt tall as the battery (16 pt outweighed the speaker), and cropped to its ink
   (`Sources/zenith/Symbols.swift`). On Ethernet, Material Design's `ethernet` from Nerd Fonts,
   Omarchy 4's glyph, as SF Symbols has no Ethernet port. With nothing routing, all dim:
   `wifi.slash` when Wi-Fi is off, `wifi.exclamationmark` when it is on, and `lan_disconnect`
