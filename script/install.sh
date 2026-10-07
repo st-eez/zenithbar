@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Builds ZenithBar from this checkout into a signed ZenithBar.app, installs it to /Applications
 # and runs it from a LaunchAgent that starts it at login and again whenever it exits
-# (docs/overview.md). Location Services prompts for and remembers a signed bundle, and asked
-# nothing of the bare executable this installed before (docs/network.md).
+# unsuccessfully; after three quick exits in a row ZenithBar exits successfully, which ends a
+# crash loop (docs/overview.md, install). Location Services prompts for and remembers a signed
+# bundle, and asked nothing of the bare executable this installed before (docs/network.md).
 #
 # Signing uses ZENITHBAR_SIGN_IDENTITY, or the first Apple Development certificate in the
 # keychain, as Kosmos's script/bundle.sh does. Keep using the same certificate: the Location
@@ -30,6 +31,8 @@ app=/Applications/ZenithBar.app
 binary=$app/Contents/MacOS/zenithbar
 # Where earlier installs put the bare executable.
 old_binary=$HOME/.local/bin/zenithbar
+# ZenithBar's count of quick launches in a row (LaunchGuard), cleared so a new install starts.
+quick_launches="$HOME/Library/Application Support/ZenithBar/quick-launches"
 log=$HOME/Library/Logs/zenithbar.log
 
 stop() {
@@ -46,7 +49,7 @@ stop() {
 
 if [[ $mode == uninstall ]]; then
     stop
-    rm -rf "$plist" "$app" "$old_binary"
+    rm -rf "$plist" "$app" "$old_binary" "$(dirname "$quick_launches")"
     echo "ZenithBar is stopped and removed; ~/.config/zenithbar stays."
     exit 0
 fi
@@ -85,8 +88,12 @@ cat > "$plist" <<EOF
     </array>
     <key>RunAtLoad</key>
     <true/>
+    <!-- Restarted after a crash or an exit with an error, not after ZenithBar ends a crash loop. -->
     <key>KeepAlive</key>
-    <true/>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
     <key>EnvironmentVariables</key>
     <dict>
         <!-- Plugins run under ZenithBar's environment, and launchd's PATH leaves out Homebrew. -->
@@ -107,7 +114,7 @@ if [[ $mode == replace ]]; then
     brew services stop sketchybar >/dev/null 2>&1 || launchctl bootout "$domain/sh.brew.sketchybar" 2>/dev/null || true
 fi
 stop
-rm -rf "$app" "$old_binary"
+rm -rf "$app" "$old_binary" "$quick_launches"
 mv "$stage" "$app"
 launchctl bootstrap "$domain" "$plist"
 echo "ZenithBar runs from $app, signed by $identity, under the LaunchAgent $label; errors go to $log."
