@@ -101,6 +101,13 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   `displayUUID`, as Kosmos's display numbers are no key: it gives 0 both when it manages no
   display and to a workspace on no listed display, and every display 1 when one is active.
   From a Kosmos without the field, Zenith joins by number.
+- **Icons:** the system items share one line style, Steve's choice on 2026-10-07, as a
+  thin speaker beside solid Material glyphs and a filled battery read as three sets: SF
+  Symbols at 14 to 16 pt (the speaker, Wi-Fi, a plugin's `symbol`, as the agents' sparkles),
+  a battery outlined in SF's 1.3 pt strokes with its percent inside, and an Ethernet port
+  drawn in the same strokes ([network.md](network.md)). An SF Symbol drawn into a rect of
+  its size stretches, as it draws past its size, so each is drawn at its own size and cropped
+  to its ink (`Sources/zenith/Symbols.swift`).
 - **The other items:** the clock redraws at each minute's start on a timer set for it,
   the battery on IOKit's power source notifications, the network on SystemConfiguration's
   and CoreWLAN's notifications ([network.md](network.md)), and the volume on CoreAudio's

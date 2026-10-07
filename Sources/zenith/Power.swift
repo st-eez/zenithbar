@@ -29,9 +29,10 @@ struct Battery: Hashable {
         CFRunLoopAddSource(CFRunLoopGetMain(), source?.takeRetainedValue(), .defaultMode)
     }
 
-    /// The battery image of Steve's SketchyBar helper, ported: a filled body with the percent
-    /// inside it, light over the empty part and dark over the filled one, and a bolt on AC.
-    /// Its 51 by 20 unit canvas showed at 0.85 pt a unit there.
+    /// The battery in the bar's line style, as SF Symbols' speaker and Wi-Fi: an outlined body
+    /// with the percent inside it, and a bolt on AC. Steve chose it over his SketchyBar helper's
+    /// filled body on 2026-10-07, as the solid block outweighed the line icons beside it. Its 51
+    /// by 20 unit canvas shows at 0.85 pt a unit.
     /// The image, its size, and where its ink, the body to the end of its nub, runs.
     func image(foreground: NSColor, background: NSColor, scale: CGFloat) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {
         let unit: CGFloat = 0.85, size = CGSize(width: 51 * unit, height: 20 * unit)
@@ -43,34 +44,29 @@ struct Battery: Hashable {
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
         defer { NSGraphicsContext.restoreGraphicsState() }
-        let fraction = CGFloat(percent) / 100
-        let body = NSBezierPath(roundedRect: NSRect(x: 1, y: 3, width: 27, height: 14), xRadius: 4, yRadius: 4)
-        let trough = foreground.blended(withFraction: 0.55, of: background) ?? foreground
-        trough.setFill()
-        body.fill()
-        context.saveGState()
-        body.addClip()
-        foreground.setFill()
-        NSRect(x: 1, y: 3, width: 27 * fraction, height: 14).fill()
-        context.restoreGState()
-        let font = NSFont.monospacedDigitSystemFont(ofSize: percent == 100 ? 10 : 11.5, weight: .semibold)
+        // 1.3 pt, the weight of SF Symbols' strokes at the bar's sizes, inset to keep the body's
+        // outer edge where the filled body's was.
+        let line = 1.3 / unit
+        let outline = foreground.blended(withFraction: 0.45, of: background) ?? foreground
+        let body = NSBezierPath(roundedRect: NSRect(x: 1, y: 3, width: 27, height: 14).insetBy(dx: line / 2, dy: line / 2),
+                                xRadius: 4 - line / 2, yRadius: 4 - line / 2)
+        body.lineWidth = line
+        outline.setStroke()
+        body.stroke()
+        outline.setFill()
+        NSBezierPath(roundedRect: NSRect(x: 29, y: 7.5, width: 2, height: 5), xRadius: 1, yRadius: 1).fill()
+        let font = NSFont.monospacedDigitSystemFont(ofSize: percent == 100 ? 9.5 : 11, weight: .semibold)
         let number = String(percent) as NSString
         let textSize = number.size(withAttributes: [.font: font])
-        let origin = NSPoint(x: (charging ? 12 : 14.5) - textSize.width / 2, y: 10 - textSize.height / 2 + 0.5)
+        let origin = NSPoint(x: (charging ? 11.5 : 14.5) - textSize.width / 2, y: 10 - textSize.height / 2 + 0.5)
         number.draw(at: origin, withAttributes: [.font: font, .foregroundColor: foreground])
-        context.saveGState()
-        NSRect(x: 1, y: 3, width: 27 * fraction, height: 14).clip()
-        number.draw(at: origin, withAttributes: [.font: font, .foregroundColor: background])
-        context.restoreGState()
-        trough.setFill()
-        NSBezierPath(roundedRect: NSRect(x: 29, y: 7.5, width: 2, height: 5), xRadius: 1, yRadius: 1).fill()
         if charging {
             let bolt = NSBezierPath()
-            bolt.move(to: NSPoint(x: 25, y: 16))
-            for point in [NSPoint(x: 20.5, y: 9), NSPoint(x: 23.5, y: 9), NSPoint(x: 22, y: 4),
-                          NSPoint(x: 27.5, y: 11.5), NSPoint(x: 24, y: 11.5)] { bolt.line(to: point) }
+            bolt.move(to: NSPoint(x: 25, y: 14))
+            for point in [NSPoint(x: 22.2, y: 9.3), NSPoint(x: 24.1, y: 9.3), NSPoint(x: 23, y: 6),
+                          NSPoint(x: 26, y: 10.7), NSPoint(x: 24.1, y: 10.7)] { bolt.line(to: point) }
             bolt.close()
-            background.setFill()
+            foreground.setFill()
             bolt.fill()
         }
         // The body starts at 1 unit and the nub ends at 31, after the 9.5 unit shift.

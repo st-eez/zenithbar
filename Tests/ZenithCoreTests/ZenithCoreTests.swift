@@ -116,10 +116,10 @@ import Testing
     #expect(networkIcon(.wifi(rssi: -45)) == (.symbol("wifi", value: 1), false))
     #expect(networkIcon(.wifi(rssi: -70)).icon == .symbol("wifi", value: 0.5))
     #expect(networkIcon(.wifi(rssi: -95)).icon == .symbol("wifi", value: 0))
-    #expect(networkIcon(.ethernet) == (.glyph("\u{F0200}"), false))
+    #expect(networkIcon(.ethernet) == (.ethernetPort, false))
     #expect(networkIcon(.offline(wifiPower: false)) == (.symbol("wifi.slash", value: nil), true))
     #expect(networkIcon(.offline(wifiPower: true)) == (.symbol("wifi.exclamationmark", value: nil), true))
-    #expect(networkIcon(.offline(wifiPower: nil)).dim)
+    #expect(networkIcon(.offline(wifiPower: nil)) == (.symbol("network.slash", value: nil), true))
 }
 
 @Test func primaryServiceSkipsTunnels() {
@@ -172,12 +172,12 @@ import Testing
 
 @Test func pluginLinesDecode() throws {
     let line = #"""
-        {"item":"agents","icon":"x","alert":true,"pages":[{"tab":"Claude","title":"Claude Code · Max","rows":[
+        {"item":"agents","icon":"x","symbol":"sparkles","alert":true,"pages":[{"tab":"Claude","title":"Claude Code · Max","rows":[
           {"caption":"LIMITS"},{"meter":"Session","value":1.4,"detail":"95%","tone":"alert"},
           {"note":"Resets in","until":1000,"tone":"dim"},{"meter":"Wed","value":0.3,"detail":"163M","bold":true}]}]}
         """#
     let item = try #require(PluginItem.decode(Data(line.utf8)))
-    #expect(item.alert && !item.hidden)
+    #expect(item.alert && !item.hidden && item.symbol == "sparkles")
     let rows = try #require(item.pages.first?.rows)
     #expect(rows[0] == .caption("LIMITS"))
     #expect(rows[1] == .meter(label: "Session", value: 1, detail: "95%", tone: .alert, bold: false))

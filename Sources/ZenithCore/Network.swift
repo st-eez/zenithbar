@@ -53,21 +53,21 @@ public func wifiLevel(rssi: Int) -> Int {
     min(4, max(0, (rssi + 100) * 4 / 45))
 }
 
-/// What the network item draws: an SF Symbol, filled to `value` from 0 to 1 when it has
-/// one, or a Material Design glyph from Nerd Fonts.
+/// What the network item draws: an SF Symbol, filled to `value` from 0 to 1 when it has one,
+/// or the Ethernet port Zenith draws in SF's line style, as SF Symbols has none.
 public enum NetworkIcon: Equatable, Sendable {
     case symbol(String, value: Double?)
-    case glyph(String)
+    case ethernetPort
 }
 
 /// The item's icon and whether it shows dim. Wi-Fi as the native menu bar draws it, its arcs
-/// filled by level; Ethernet as Omarchy's shell draws it, as SF Symbols has no Ethernet port.
+/// filled by level.
 public func networkIcon(_ route: Route) -> (icon: NetworkIcon, dim: Bool) {
     switch route {
     case let .wifi(rssi): (.symbol("wifi", value: Double(wifiLevel(rssi: rssi)) / 4), false)
-    case .ethernet: (.glyph("\u{F0200}"), false) // ethernet
+    case .ethernet: (.ethernetPort, false)
     case .offline(wifiPower: false): (.symbol("wifi.slash", value: nil), true)
     case .offline(wifiPower: true): (.symbol("wifi.exclamationmark", value: nil), true)
-    case .offline(wifiPower: nil): (.glyph("\u{F0319}"), true) // lan_disconnect
+    case .offline(wifiPower: nil): (.symbol("network.slash", value: nil), true)
     }
 }

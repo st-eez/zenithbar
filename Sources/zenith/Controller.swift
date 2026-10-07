@@ -206,15 +206,9 @@ import ZenithKit
         if let battery, let (image, size, ink) = batteryImage(battery, scale: scale) {
             items.append(("battery", Item(content: .image(image, size: size, ink: ink))))
         }
-        let route = networkIcon(network.route), routeColor = route.dim ? theme.dim : theme.foreground
-        switch route.icon {
-        case let .glyph(glyph):
-            let text = NSAttributedString(string: glyph, attributes: [.font: font(16), .foregroundColor: routeColor.nsColor])
-            items.append(("network", Item(content: .text(text), center: .ink)))
-        case let .symbol(name, value):
-            if let (image, size, ink) = symbolImage(name, value: value, color: routeColor, scale: scale) {
-                items.append(("network", Item(content: .image(image, size: size, ink: ink))))
-            }
+        let route = networkIcon(network.route)
+        if let (image, size, ink) = networkImage(route.icon, color: route.dim ? theme.dim : theme.foreground, scale: scale) {
+            items.append(("network", Item(content: .image(image, size: size, ink: ink))))
         }
         let speaker = volumeGlyph(volume.level, muted: volume.muted)
         let glyph = NSAttributedString(string: speaker.glyph, attributes: [
@@ -222,9 +216,12 @@ import ZenithKit
         ])
         items.append(("volume", Item(content: .text(glyph), center: .ink)))
         for (key, item) in pluginItems where !item.hidden {
-            let glyph = NSAttributedString(string: item.icon, attributes: [
-                .font: font(16), .foregroundColor: (item.alert ? theme.alert : theme.foreground).nsColor,
-            ])
+            let color = item.alert ? theme.alert : theme.foreground
+            if let symbol = item.symbol, let (image, size, ink) = symbolImage(symbol, key: key, color: color, scale: scale) {
+                items.append((key, Item(content: .image(image, size: size, ink: ink))))
+                continue
+            }
+            let glyph = NSAttributedString(string: item.icon, attributes: [.font: font(16), .foregroundColor: color.nsColor])
             items.append((key, Item(content: .text(glyph), center: .ink)))
         }
         return items
@@ -249,25 +246,49 @@ import ZenithKit
         return image
     }
 
-    private struct SymbolDrawing: Hashable {
-        var name: String
-        var value: Double?
+    private struct NetworkDrawing: Equatable {
+        var icon: NetworkIcon
         var color: RGBA
     }
 
-    /// The network's symbol, drawn again only when it changes, as the battery's image is.
-    private var symbolImages: [CGFloat: (key: SymbolDrawing, image: (CGImage, CGSize, ClosedRange<CGFloat>))] = [:]
+    /// The network's icon, drawn again only when it changes, as the battery's image is.
+    private var networkImages: [CGFloat: (key: NetworkDrawing, image: (CGImage, CGSize, ClosedRange<CGFloat>))] = [:]
 
-    /// At 14 pt, about 12 pt tall, as the battery and the Ethernet glyph; at 16 pt its arcs
-    /// outweighed the speaker beside it.
-    private func symbolImage(_ name: String, value: Double?, color: RGBA,
-                             scale: CGFloat) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {
-        let key = SymbolDrawing(name: name, value: value, color: color)
-        if let cached = symbolImages[scale], cached.key == key { return cached.image }
-        guard let image = symbol(name, value: value, pointSize: 14, color: color.nsColor).flatMap({ inkImage($0, scale: scale) })
-        else { return nil }
-        symbolImages[scale] = (key, image)
+    private func networkImage(_ icon: NetworkIcon, color: RGBA, scale: CGFloat) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {
+        let key = NetworkDrawing(icon: icon, color: color)
+        if let cached = networkImages[scale], cached.key == key { return cached.image }
+        guard let image = networkDrawing(icon, size: 14, color: color.nsColor).flatMap({ inkImage($0, scale: scale) }) else { return nil }
+        networkImages[scale] = (key, image)
         return image
+    }
+
+    private struct SymbolDrawing: Equatable {
+        var name: String
+        var color: RGBA
+    }
+
+    /// Each plugin item's symbol at each display scale, drawn again only when it changes, as
+    /// the battery's image is.
+    private var symbolImages: [String: (key: SymbolDrawing, image: (CGImage, CGSize, ClosedRange<CGFloat>))] = [:]
+
+    /// At 14 pt, as the network's icon.
+    private func symbolImage(_ name: String, key item: String, color: RGBA,
+                             scale: CGFloat) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {
+        let key = SymbolDrawing(name: name, color: color), slot = "\(item) \(scale)"
+        if let cached = symbolImages[slot], cached.key == key { return cached.image }
+        guard let image = symbol(name, value: nil, pointSize: 14, color: color.nsColor).flatMap({ inkImage($0, scale: scale) })
+        else { return nil }
+        symbolImages[slot] = (key, image)
+        return image
+    }
+
+    /// At 14 pt, about 12 pt tall, as the battery; at 16 pt the Wi-Fi's arcs outweighed the
+    /// speaker beside it.
+    private func networkDrawing(_ icon: NetworkIcon, size: CGFloat, color: NSColor) -> NSImage? {
+        switch icon {
+        case let .symbol(name, value): symbol(name, value: value, pointSize: size, color: color)
+        case .ethernetPort: ethernetPort(height: size * 11.5 / 14, color: color)
+        }
     }
 
     /// `first` then `second` with `gap` points between their ink, kerning away the blank the
@@ -339,11 +360,12 @@ import ZenithKit
               let bar = bars[display], let frame = bar.frames[key],
               let screen = NSScreen.screens.first(where: { $0.displayID == display }) else { return popup.close() }
         let anchor = frame.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY)
-        var icon: NSImage?
-        if key == "network", case let .symbol(name, value) = networkIcon(network.route).icon {
-            icon = symbol(name, value: value, pointSize: 13, color: theme.accent.nsColor)
-                .flatMap { inkImage($0, scale: screen.backingScaleFactor) }.map { NSImage(cgImage: $0.0, size: $0.1) }
+        let drawing = if key == "network" {
+            networkDrawing(networkIcon(network.route).icon, size: 13, color: theme.accent.nsColor)
+        } else {
+            item.symbol.flatMap { symbol($0, value: nil, pointSize: 13, color: theme.accent.nsColor) }
         }
+        let icon = drawing.flatMap { inkImage($0, scale: screen.backingScaleFactor) }.map { NSImage(cgImage: $0.0, size: $0.1) }
         popup.show(item, page: min(pages[key] ?? 0, item.pages.count - 1), key: key, display: display, anchor: anchor,
                    screen: screen.frame, theme: theme, icon: icon)
     }

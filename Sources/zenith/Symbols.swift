@@ -10,6 +10,36 @@ func symbol(_ name: String, value: Double?, pointSize: CGFloat, color: NSColor) 
     return image?.withSymbolConfiguration(configuration)
 }
 
+/// An Ethernet port, a jack with its latch's notch below and three pins above, drawn
+/// `height` points tall in the 1.3 pt strokes of SF Symbols at the bar's sizes.
+func ethernetPort(height: CGFloat, color: NSColor) -> NSImage {
+    NSImage(size: NSSize(width: height + 3, height: height + 3), flipped: false) { _ in
+        let unit = height / 11.5, line = 1.3 * unit
+        let jack = NSBezierPath()
+        let (left, right, bottom, top) = (1.5 * unit, 14.5 * unit, 1.5 * unit, 13 * unit)
+        let notch = 3 * unit, latch = 13 * unit * 0.22, middle = (left + right) / 2
+        for (index, point) in [(left, top), (right, top), (right, bottom + notch), (middle + latch, bottom + notch),
+                               (middle + latch, bottom), (middle - latch, bottom), (middle - latch, bottom + notch),
+                               (left, bottom + notch)].enumerated() {
+            if index == 0 { jack.move(to: NSPoint(x: point.0, y: point.1)) } else { jack.line(to: NSPoint(x: point.0, y: point.1)) }
+        }
+        jack.close()
+        jack.lineWidth = line
+        jack.lineJoinStyle = .round
+        color.setStroke()
+        jack.stroke()
+        for x in [5.0, 8, 11] {
+            let pin = NSBezierPath()
+            pin.move(to: NSPoint(x: x * unit, y: top))
+            pin.line(to: NSPoint(x: x * unit, y: top - 2.8 * unit))
+            pin.lineWidth = 1.1 * unit
+            pin.lineCapStyle = .round
+            pin.stroke()
+        }
+        return true
+    }
+}
+
 /// `image` drawn at `scale` and cropped to its ink, so an item centers and spaces it by its
 /// ink as it does a glyph: the bitmap, its size in points, and its ink's span, all of it.
 func inkImage(_ image: NSImage, scale: CGFloat) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {

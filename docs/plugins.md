@@ -21,6 +21,9 @@ Steve's dotfiles, `zenith/.config/zenith/plugins/agents`, is the first.
   `POSIX_SPAWN_SETPGROUP`, then signalling the group, would stop them too.
 - **Output:** each line a plugin prints on standard output is one JSON object, an item:
   - `item`, its name, and `icon`, the glyph the bar shows, in JetBrains Mono Nerd Font.
+  - `symbol`, optional, an SF Symbol's name the bar and the panel show in its place at 14 pt,
+    in the line style of the bar's system items; `icon` stays the fallback when macOS has no
+    symbol of that name.
   - `alert`, drawn in the theme's alert color, and `hidden`, off the bar.
   - `pages`, the panel's pages, each with a `tab` naming it among the others, a `title`,
     and `rows`, each one of:

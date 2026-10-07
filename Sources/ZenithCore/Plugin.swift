@@ -6,6 +6,9 @@ public struct PluginItem: Decodable, Equatable, Sendable {
     public var item: String
     /// The glyph the bar shows.
     public var icon: String
+    /// An SF Symbol the bar and the panel show in place of `icon`, which stays the fallback
+    /// when macOS has no symbol of that name.
+    public var symbol: String?
     /// Drawn in the theme's alert color.
     public var alert: Bool
     public var hidden: Bool
@@ -13,8 +16,8 @@ public struct PluginItem: Decodable, Equatable, Sendable {
     public var pages: [Page]
 
     /// An item Zenith builds itself, as the network item's panel.
-    public init(item: String, icon: String, alert: Bool = false, hidden: Bool = false, pages: [Page]) {
-        (self.item, self.icon, self.alert, self.hidden, self.pages) = (item, icon, alert, hidden, pages)
+    public init(item: String, icon: String, symbol: String? = nil, alert: Bool = false, hidden: Bool = false, pages: [Page]) {
+        (self.item, self.icon, self.symbol, self.alert, self.hidden, self.pages) = (item, icon, symbol, alert, hidden, pages)
     }
 
     public struct Page: Decodable, Equatable, Sendable {
@@ -64,12 +67,13 @@ public struct PluginItem: Decodable, Equatable, Sendable {
         }
     }
 
-    private enum Keys: String, CodingKey { case item, icon, alert, hidden, pages }
+    private enum Keys: String, CodingKey { case item, icon, symbol, alert, hidden, pages }
 
     public init(from decoder: Decoder) throws {
         let line = try decoder.container(keyedBy: Keys.self)
         item = try line.decode(String.self, forKey: .item)
         icon = try line.decode(String.self, forKey: .icon)
+        symbol = try line.decodeIfPresent(String.self, forKey: .symbol)
         alert = try line.decodeIfPresent(Bool.self, forKey: .alert) ?? false
         hidden = try line.decodeIfPresent(Bool.self, forKey: .hidden) ?? false
         pages = try line.decodeIfPresent([Page].self, forKey: .pages) ?? []

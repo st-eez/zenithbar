@@ -118,8 +118,6 @@ import ZenithKit
     /// the primary first and marked, Wi-Fi with its signal and its network's name when
     /// Location Services allows it, which it does not for Zenith (docs/network.md).
     func panel() -> PluginItem {
-        // A symbol is drawn by the panel from the route, not from text (Controller.openPopup).
-        let glyph = if case let .glyph(glyph) = networkIcon(route).icon { glyph } else { "" }
         let shown = services.filter { $0.kind != .other && $0.address != nil }
             .sorted { $0 == primary && $1 != primary }
         var rows: [PluginItem.Row] = []
@@ -142,7 +140,8 @@ import ZenithKit
             }
             rows.append(.note(text: "No connection", until: nil, since: nil, detail: wifi, tone: .dim))
         }
-        return PluginItem(item: "network", icon: glyph, pages: [.init(title: "Network", rows: rows)])
+        // The panel draws the bar's icon, not a glyph (Controller.openPopup).
+        return PluginItem(item: "network", icon: "", pages: [.init(title: "Network", rows: rows)])
     }
 }
 
