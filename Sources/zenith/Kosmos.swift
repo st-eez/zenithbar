@@ -54,9 +54,9 @@ final class KosmosLink: Sendable {
 
     func send(_ args: [String]) {
         queue.async {
-            if let reply = Self.request(args), reply.exitCode != 0 {
-                log.notice("kosmos \(args.joined(separator: " "), privacy: .public): \(reply.stderr, privacy: .public)")
-            }
+            let command = args.joined(separator: " ")
+            guard let reply = Self.request(args) else { return log.notice("Kosmos did not answer \(command, privacy: .public)") }
+            if reply.exitCode != 0 { log.notice("kosmos \(command, privacy: .public): \(reply.stderr, privacy: .public)") }
         }
     }
 
