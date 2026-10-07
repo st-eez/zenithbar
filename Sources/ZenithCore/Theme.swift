@@ -27,10 +27,15 @@ public struct Theme: Equatable, Sendable {
     public var dim: RGBA
     /// The text of shown workspaces.
     public var selected: RGBA
+    /// Panels' borders and meters.
+    public var accent: RGBA
+    /// What needs attention, as a usage limit nearly reached.
+    public var alert: RGBA
 
     /// Tokyo Night, the theme Steve's Mac had when Zenith began, for a Mac without the file.
     public static let fallback = Theme(json: Data("""
-        {"background": "#1a1b26", "foreground": "#a9b1d6", "dim": "#a9b1d680", "selected": "#c0caf5"}
+        {"background": "#1a1b26", "foreground": "#a9b1d6", "dim": "#a9b1d680", "selected": "#c0caf5",
+         "accent": "#7aa2f7", "alert": "#f7768e"}
         """.utf8))!
 
     /// Nil when `json` lacks a role or names a color it cannot read.
@@ -39,10 +44,14 @@ public struct Theme: Equatable, Sendable {
               let background = roles["background"].flatMap(RGBA.init(hex:)),
               let foreground = roles["foreground"].flatMap(RGBA.init(hex:)),
               let dim = roles["dim"].flatMap(RGBA.init(hex:)),
-              let selected = roles["selected"].flatMap(RGBA.init(hex:)) else { return nil }
+              let selected = roles["selected"].flatMap(RGBA.init(hex:)),
+              let accent = roles["accent"].flatMap(RGBA.init(hex:)),
+              let alert = roles["alert"].flatMap(RGBA.init(hex:)) else { return nil }
         self.background = background
         self.foreground = foreground
         self.dim = dim
         self.selected = selected
+        self.accent = accent
+        self.alert = alert
     }
 }

@@ -63,6 +63,15 @@ public enum BarStyle: String, Decodable, Sendable {
 /// `~/.config/zenith/config.json`, read again whenever its folder changes.
 public struct Config: Decodable, Equatable, Sendable {
     public var style: BarStyle = .standard
+    public var plugins: [Plugin] = []
+
+    /// A command Zenith runs every `interval` seconds, and early on a wake or a right click
+    /// on its item, reading the items it prints (docs/plugins.md).
+    public struct Plugin: Decodable, Equatable, Sendable {
+        /// The program, `~` standing for the home folder, then its arguments.
+        public var command: [String]
+        public var interval: Double
+    }
 
     public init() {}
 
@@ -72,10 +81,11 @@ public struct Config: Decodable, Equatable, Sendable {
         self = config
     }
 
-    private enum CodingKeys: String, CodingKey { case style }
+    private enum CodingKeys: String, CodingKey { case style, plugins }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         style = try container.decodeIfPresent(BarStyle.self, forKey: .style) ?? .standard
+        plugins = try container.decodeIfPresent([Plugin].self, forKey: .plugins) ?? []
     }
 }

@@ -93,3 +93,33 @@ import Testing
     #expect(Config(json: Data("{}".utf8))?.style == .standard)
     #expect(Config(json: Data(#"{"style":"wavy"}"#.utf8)) == nil)
 }
+
+@Test func pluginLinesDecode() throws {
+    let line = #"""
+        {"item":"agents","icon":"x","alert":true,"pages":[{"tab":"Claude","title":"Claude Code · Max","rows":[
+          {"caption":"LIMITS"},{"meter":"Session","value":1.4,"detail":"95%","tone":"alert"},
+          {"note":"Resets in","until":1000,"tone":"dim"},{"meter":"Wed","value":0.3,"detail":"163M","bold":true}]}]}
+        """#
+    let item = try #require(PluginItem.decode(Data(line.utf8)))
+    #expect(item.alert && !item.hidden)
+    let rows = try #require(item.pages.first?.rows)
+    #expect(rows[0] == .caption("LIMITS"))
+    #expect(rows[1] == .meter(label: "Session", value: 1, detail: "95%", tone: .alert, bold: false))
+    #expect(rows[2] == .note(text: "Resets in", until: Date(timeIntervalSince1970: 1000), since: nil, detail: nil, tone: .dim))
+    #expect(PluginItem.decode(Data(#"{"item":"a","icon":"x","pages":[{"tab":"","title":"","rows":[{"what":1}]}]}"#.utf8)) == nil)
+}
+
+@Test func notesTellTime() {
+    let now = Date(timeIntervalSince1970: 100_000)
+    #expect(noteText("Resets in", until: now.addingTimeInterval(2 * 86400 + 22 * 3600 + 5), since: nil, detail: nil, now: now)
+        == "Resets in 2d 22h")
+    #expect(noteText("Resets in", until: now.addingTimeInterval(3600 + 59 * 60), since: nil, detail: nil, now: now) == "Resets in 1h 59m")
+    #expect(noteText("Updated", until: nil, since: now.addingTimeInterval(-180), detail: "5 sessions", now: now)
+        == "Updated 3m ago  ·  5 sessions")
+    #expect(noteText("Updated", until: nil, since: now, detail: nil, now: now) == "Updated just now")
+}
+
+@Test func configReadsPlugins() {
+    let config = Config(json: Data(#"{"plugins":[{"command":["~/a","b"],"interval":900}]}"#.utf8))
+    #expect(config?.plugins == [Config.Plugin(command: ["~/a", "b"], interval: 900)])
+}

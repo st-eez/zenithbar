@@ -58,6 +58,12 @@ cat > "$plist" <<EOF
     <true/>
     <key>KeepAlive</key>
     <true/>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- Plugins run under Zenith's environment, and launchd's PATH leaves out Homebrew. -->
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/opt/homebrew/sbin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
     <key>ProcessType</key>
     <string>Interactive</string>
     <key>LimitLoadToSessionType</key>

@@ -26,12 +26,21 @@ struct Item: Equatable {
     /// Blank above and below text in its bitmap, for glyphs raised or lowered to line up.
     static let pad: CGFloat = 3
 
-    /// The drawing's size in points.
+    /// The drawing's size in points. Text's bitmap spans its advance and its ink, as a glyph,
+    /// as Nerd Font's robot, can draw past its advance on either side.
     var size: CGSize {
         switch content {
-        case let .text(text): CGSize(width: ceil(text.size().width), height: ceil(text.size().height) + 2 * Self.pad)
-        case let .image(_, size, _): size
+        case let .text(text):
+            let ink = inkBounds(text)
+            return CGSize(width: ceil(max(text.size().width, ink.maxX) + inset), height: ceil(text.size().height) + 2 * Self.pad)
+        case let .image(_, size, _): return size
         }
+    }
+
+    /// How far right text is drawn in its bitmap, to hold ink that starts left of its origin.
+    var inset: CGFloat {
+        guard case let .text(text) = content else { return 0 }
+        return ceil(max(0, -inkBounds(text).minX))
     }
 
     /// Where the drawing's ink starts and ends, from its left edge.
@@ -182,7 +191,7 @@ final class BarPanel: NSPanel {
         context.scaleBy(x: scale, y: scale)
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
-        text.draw(at: CGPoint(x: 0, y: Item.pad))
+        text.draw(at: CGPoint(x: item.inset, y: Item.pad))
         NSGraphicsContext.restoreGraphicsState()
         return context.makeImage()
     }
@@ -204,7 +213,7 @@ final class BarPanel: NSPanel {
             let size = item.size
             // On the pixel grid, as a bitmap moved by part of a pixel draws its text blurred.
             let scale = panel.backingScaleFactor
-            layers[key]?.frame = CGRect(x: ((x - ink.lowerBound) * scale).rounded() / scale,
+            layers[key]?.frame = CGRect(x: ((x - ink.lowerBound - item.inset) * scale).rounded() / scale,
                                         y: (item.bottom(height: Self.height) * scale).rounded() / scale,
                                         width: size.width, height: size.height)
         }

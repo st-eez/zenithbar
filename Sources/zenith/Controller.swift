@@ -2,7 +2,7 @@ import AppKit
 import ZenithCore
 
 /// Holds what the bars show, and redraws them on each change: Kosmos's state, the clock,
-/// the battery, the volume and the hovered item.
+/// the battery, the volume, the plugins' items and the hovered item.
 @MainActor final class Controller {
     private var bars: [CGDirectDisplayID: Bar] = [:]
     /// Each screen's UUID, which Kosmos's snapshot names its displays by.
@@ -18,6 +18,13 @@ import ZenithCore
     private lazy var kosmos = KosmosLink { [weak self] state in
         Task { @MainActor in self?.received(state) }
     }
+    private lazy var plugins = Plugins { [weak self] item in self?.received(item) }
+    /// The plugins' items, in the order they first printed them.
+    private var pluginItems: [(key: String, item: PluginItem)] = []
+    /// The page each plugin item's panel shows.
+    private var pages: [String: Int] = [:]
+    private lazy var popup = Popup(selected: { [weak self] page in self?.select(page: page) },
+                                   exited: { [weak self] in self?.pointerMayHaveLeft() })
 
     func start() {
         guard kosmos.start() else {
@@ -40,6 +47,7 @@ import ZenithCore
                 self.volume.read()
                 self.tick()
                 self.kosmos.refresh()
+                self.plugins.runAll(event: "wake")
             }
         }
         placeBars()
@@ -57,6 +65,7 @@ import ZenithCore
         if let data = try? Data(contentsOf: Self.settings.appending(path: "config.json")) {
             if let config = Config(json: data) { self.config = config } else { log.error("Could not read config.json") }
         }
+        plugins.configure(config.plugins)
     }
 
     /// Reads the settings again when their folder changes, as when an editor saves by
@@ -90,6 +99,18 @@ import ZenithCore
         guard next != rows else { return }
         rows = next
         render()
+    }
+
+    private func received(_ item: PluginItem) {
+        let key = "plugin." + item.item
+        if let index = pluginItems.firstIndex(where: { $0.key == key }) {
+            guard pluginItems[index].item != item else { return }
+            pluginItems[index].item = item
+        } else {
+            pluginItems.append((key, item))
+        }
+        render()
+        if popup.shown?.key == key { openPopup(key, display: popup.shown!.display) }
     }
 
     /// Redraws at each minute's start, on a timer set for it rather than a tick each second.
@@ -154,7 +175,8 @@ import ZenithCore
         return items
     }
 
-    /// From the bar's right end inward: the calendar, the battery, the volume.
+    /// From the bar's right end inward: the calendar, the battery, the volume, then the
+    /// plugins' items.
     private func rightItems(scale: CGFloat) -> [(key: String, item: Item)] {
         var items: [(key: String, item: Item)] = []
         let (date, time) = clockText(Date())
@@ -170,6 +192,12 @@ import ZenithCore
             .font: NSFont.systemFont(ofSize: 16), .foregroundColor: (speaker.dim ? theme.dim : theme.foreground).nsColor,
         ])
         items.append(("volume", Item(content: .text(glyph), center: .ink)))
+        for (key, item) in pluginItems where !item.hidden {
+            let glyph = NSAttributedString(string: item.icon, attributes: [
+                .font: font(16), .foregroundColor: (item.alert ? theme.alert : theme.foreground).nsColor,
+            ])
+            items.append((key, Item(content: .text(glyph), center: .ink)))
+        }
         return items
     }
 
@@ -214,7 +242,13 @@ import ZenithCore
             ?? .monospacedSystemFont(ofSize: size, weight: bold ? .bold : .regular)
     }
 
-    func clicked(_ key: String) {
+    enum Button { case left, right, middle }
+
+    func clicked(_ key: String, button: Button, display: CGDirectDisplayID) {
+        if key.hasPrefix("plugin.") {
+            return pluginClicked(key, button: button, display: display)
+        }
+        guard button == .left else { return }
         if key.hasPrefix("space.") {
             kosmos.send(["workspace", String(key.dropFirst(6))])
         } else if key == "front" {
@@ -229,6 +263,50 @@ import ZenithCore
         let changed = [hovered, key].contains { $0?.hasPrefix("space.") == true }
         hovered = key
         if changed { render() }
+        if popup.shown != nil, key != popup.shown?.key { pointerMayHaveLeft() }
+    }
+
+    /// A left click opens or closes the item's panel, a middle click shows its next page,
+    /// and a right click runs its plugin now, as SketchyBar's agents item did.
+    private func pluginClicked(_ key: String, button: Button, display: CGDirectDisplayID) {
+        switch button {
+        case .left: if popup.shown?.key == key { popup.close() } else { openPopup(key, display: display) }
+        case .middle:
+            guard let item = pluginItems.first(where: { $0.key == key })?.item, !item.pages.isEmpty else { return }
+            pages[key] = ((pages[key] ?? 0) + 1) % item.pages.count
+            if popup.shown?.key == key { openPopup(key, display: display) }
+        case .right: plugins.run(item: String(key.dropFirst("plugin.".count)), event: "refresh")
+        }
+    }
+
+    private func openPopup(_ key: String, display: CGDirectDisplayID) {
+        guard let item = pluginItems.first(where: { $0.key == key })?.item, !item.hidden, !item.pages.isEmpty,
+              let bar = bars[display], let frame = bar.frames[key],
+              let screen = NSScreen.screens.first(where: { $0.displayID == display }) else { return popup.close() }
+        let anchor = frame.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY)
+        popup.show(item, page: min(pages[key] ?? 0, item.pages.count - 1), key: key, display: display, anchor: anchor,
+                   screen: screen.frame, theme: theme)
+    }
+
+    private func select(page: Int) {
+        guard let shown = popup.shown else { return }
+        pages[shown.key] = page
+        openPopup(shown.key, display: shown.display)
+    }
+
+    /// Closes the panel 50 ms after the pointer leaves it or its item, unless the pointer is
+    /// back on one of them by then, as when it crosses the gap between them.
+    private func pointerMayHaveLeft() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, let shown = self.popup.shown else { return }
+                let pointer = NSEvent.mouseLocation
+                let onItem = self.bars[shown.display].flatMap { bar in
+                    bar.frames[shown.key].map { $0.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY) }
+                }?.contains(pointer) == true
+                if !onItem, !self.popup.panel.frame.contains(pointer) { self.popup.close() }
+            }
+        }
     }
 }
 
@@ -259,7 +337,13 @@ final class BarView: NSView {
         controller.item(at: convert(event.locationInWindow, from: nil), on: display)
     }
 
-    override func mouseDown(with event: NSEvent) { key(event).map(controller.clicked) }
+    override func mouseDown(with event: NSEvent) { click(event, .left) }
+    override func rightMouseDown(with event: NSEvent) { click(event, .right) }
+    override func otherMouseDown(with event: NSEvent) { click(event, .middle) }
+
+    private func click(_ event: NSEvent, _ button: Controller.Button) {
+        if let key = key(event) { controller.clicked(key, button: button, display: display) }
+    }
     override func mouseMoved(with event: NSEvent) { controller.hover(key(event)) }
     override func mouseExited(with event: NSEvent) { controller.hover(nil) }
 }
