@@ -86,7 +86,9 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   along the display's top. Each item's text or image is drawn once into its layer's
   contents; a change redraws only the items that changed, in one Core Animation
   transaction, and moves the others only when a width changed. The view finds the item
-  under a click or the pointer from the frames the last layout gave.
+  under a click or the pointer from the frames the last layout gave. A hovered item is held
+  with its display and forgotten once that bar stops showing it, as when its display goes,
+  since no exit event comes then; a panel on a display that goes closes.
 - **Kosmos** (`KosmosLink`): Kosmos pushes its snapshot (Kosmos's docs/ipc.md) as JSON to
   the Mach port Zenith registers as `io.github.st-eez.zenith`, and Zenith reads only the
   newest of those waiting. At launch and after a wake Zenith asks for `state`, and a click

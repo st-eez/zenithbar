@@ -13,7 +13,7 @@ import ZenithCore
     private var settingsWatches: [DispatchSourceFileSystemObject] = []
     private var battery = Battery.read()
     private var volume: Volume!
-    private var hovered: String?
+    private var hovered: (key: String, display: CGDirectDisplayID)?
     private var clock: Timer?
     private lazy var kosmos = KosmosLink { [weak self] state in
         Task { @MainActor in self?.received(state) }
@@ -142,26 +142,29 @@ import ZenithCore
             bar.panel.orderOut(nil)
             bars[id] = nil
         }
+        if let shown = popup.shown, bars[shown.display] == nil { popup.close() }
         render()
     }
 
     private func render() {
         for (id, bar) in bars {
             let scale = NSScreen.screens.first { $0.displayID == id }?.backingScaleFactor ?? 2
-            bar.show(left: leftItems(uuids[id].flatMap { rows[$0] }), right: rightItems(scale: scale),
+            bar.show(left: leftItems(uuids[id].flatMap { rows[$0] }, display: id), right: rightItems(scale: scale),
                      style: config.style, background: theme.background.cgColor, scale: scale)
         }
+        // An item that left its bar, or whose bar went with its display, gets no exit event.
+        if let hovered, bars[hovered.display]?.frames[hovered.key] == nil { self.hovered = nil }
     }
 
     // The fonts and sizes of Steve's SketchyBar config.
 
-    private func leftItems(_ row: WorkspaceRow?) -> [(key: String, item: Item)] {
+    private func leftItems(_ row: WorkspaceRow?, display: CGDirectDisplayID) -> [(key: String, item: Item)] {
         guard let row else { return [] }
         var items = row.pills.map { pill -> (key: String, item: Item) in
             let key = "space." + pill.name
             let color = switch pill.emphasis {
             case .focused, .shown: theme.selected
-            case .hidden: hovered == key ? theme.foreground : theme.dim
+            case .hidden: hovered?.key == key && hovered?.display == display ? theme.foreground : theme.dim
             }
             var text = NSAttributedString(
                 string: pill.name, attributes: [.font: font(14, bold: pill.emphasis == .focused), .foregroundColor: color.nsColor])
@@ -265,10 +268,11 @@ import ZenithCore
         }
     }
 
-    func hover(_ key: String?) {
-        guard key != hovered else { return }
-        let changed = [hovered, key].contains { $0?.hasPrefix("space.") == true }
-        hovered = key
+    func hover(_ key: String?, display: CGDirectDisplayID) {
+        let next = key.map { (key: $0, display: display) }
+        guard next?.key != hovered?.key || next?.display != hovered?.display else { return }
+        let changed = [hovered?.key, key].contains { $0?.hasPrefix("space.") == true }
+        hovered = next
         if changed { render() }
         if popup.shown != nil, key != popup.shown?.key { pointerMayHaveLeft() }
     }
@@ -351,8 +355,8 @@ final class BarView: NSView {
     private func click(_ event: NSEvent, _ button: Controller.Button) {
         if let key = key(event) { controller.clicked(key, button: button, display: display) }
     }
-    override func mouseMoved(with event: NSEvent) { controller.hover(key(event)) }
-    override func mouseExited(with event: NSEvent) { controller.hover(nil) }
+    override func mouseMoved(with event: NSEvent) { controller.hover(key(event), display: display) }
+    override func mouseExited(with event: NSEvent) { controller.hover(nil, display: display) }
 }
 
 extension Controller {
