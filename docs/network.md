@@ -74,8 +74,13 @@ answers an unentitled process. Reads, median of 50:
   in the installed panel and macOS showed no prompt. So `script/install.sh` now installs a
   signed `/Applications/ZenithBar.app` with `Resources/Info.plist`
   (`NSLocationUsageDescription`, `LSUIElement`), which Location Services can name and
-  remember, as it does Kosmos's bundle for Accessibility. Whether that prompts, and whether
-  the grant survives a reinstall signed with the same certificate, is next.
+  remember, as it does Kosmos's bundle for Accessibility. The signed bundle showed no prompt
+  either: its hardened runtime (`--options runtime`) denies Location Services silently
+  without the `com.apple.security.personal-information.location` entitlement, which
+  `Resources/ZenithBar.entitlements` now gives it. Allow also opens Location Services'
+  settings page 2 s after asking when ZenithBar is still not allowed, as other apps do.
+  Whether the entitlement brings the prompt, and whether the grant survives a reinstall
+  signed with the same certificate, is next.
 - Creating a `CLLocationManager` and reading its `authorizationStatus` registered the
   executable as a locationd client without a prompt. Whether that lists it in System
   Settings' Location Services was not checked.

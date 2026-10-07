@@ -200,8 +200,17 @@ import ZenithBarKit
         }
     }
 
+    /// Asks Location Services, and opens its settings page, as other apps' Allow buttons do,
+    /// when ZenithBar was turned down there or no prompt came within 2 s.
     private func askForNames() {
         wifi.askForNames { [weak self] in self?.namesChanged() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, !self.wifi.namesAllowed else { return }
+                NSWorkspace.shared.open(URL(string:
+                    "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
+            }
+        }
     }
 
     private func namesChanged() {

@@ -63,7 +63,8 @@ rm -rf "$built"
 mkdir -p "$built/Contents/MacOS" "$(dirname "$plist")"
 cp Resources/Info.plist "$built/Contents/Info.plist"
 cp "$(swift build -c release --show-bin-path)/zenithbar" "$built/Contents/MacOS/zenithbar"
-codesign --force --options runtime --timestamp=none --sign "$identity" "$built"
+codesign --force --options runtime --timestamp=none --entitlements Resources/ZenithBar.entitlements \
+    --sign "$identity" "$built"
 codesign --verify --strict "$built"
 # Copied beside the installed app without the .app extension, so LaunchServices never
 # registers the copy, then renamed over it once ZenithBar stops, as Kosmos's install does.
