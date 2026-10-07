@@ -2,14 +2,14 @@
 
 - Find what WindowServer spends on an update of one panel, and whether keeping items from
   moving cuts it: `zenith-probe cost text still` with the Mac otherwise idle.
-- Retire SketchyBar with `script/install.sh --replace-sketchybar` once the agents item lands.
 - The calendar's double click between a filled and a transparent bar, with text colored
   from the wallpaper under it.
 - A config file for which built in items show, their order and their look.
 - Plugins kept running, to print as things change, as a media item would, restarted when
   they exit.
-- When SketchyBar is retired, move the agents collector out of the sketchybar package into
-  zenith's, where the agents plugin runs it from.
+- SketchyBar was retired on 2026-10-06 (`script/install.sh --replace-sketchybar`). Move the
+  agents collector out of the dotfiles sketchybar package into zenith's, where the agents
+  plugin runs it from, and decide whether Kosmos still pushes to SketchyBar's port.
 - More styles from the mockups: `hug`, full width with its bottom corners flaring down into
   the screen's sides, and `framed`, a border round the other three edges; and panels that
   drop out of the bar as one shape, with the agents popup.
