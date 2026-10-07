@@ -12,6 +12,7 @@ let commands: [(name: String, usage: String, run: @MainActor ([String]) -> Void)
     ("shape", "shape [visual|masked|skylight|tint...]", { shape($0) }),
     ("watch", "watch [seconds]", { watch(seconds: $0.first.flatMap(Double.init) ?? 120) }),
     ("clicks", "clicks", { _ in clicks() }),
+    ("popups", "popups [seconds]", { popups(seconds: $0.first.flatMap(Double.init) ?? 120) }),
 ]
 
 func usage() -> Never {

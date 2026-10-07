@@ -39,3 +39,9 @@ Steve's dotfiles, `zenith/.config/zenith/plugins/agents`, is the first.
 - **Why the agents item runs on an interval:** a run costs about 50 ms of Python's CPU and
   about 5 s of waiting on ssh, four times an hour, where a resident Python would hold about
   15 MB. Steve chose the interval on 2026-10-06.
+- **Native popups** (`zenith-probe popups`, 2026-10-06): an `NSPopover` and an `NSMenu`
+  opened from a nonactivating bar panel without making Zenith the front app. Both draw in
+  the system's material and take only a light or dark appearance: neither has a public
+  background color or opacity, and a full width colored view inside a popover leaves its
+  arrow and edge in the material. Steve found the popover's look loose beside the panel's;
+  the panel stays custom, where the theme sets every color.
