@@ -18,9 +18,12 @@
 //       The probe's CPU and coreaudiod's a second, idle and then with every listener `watch`
 //       adds, in 5 s stretches taking turns. Default: 60 s.
 //   zenithbar-probe sound write <device name>
-//       On a device whose transport is virtual only, as Microsoft Teams Audio: sets its input
-//       mute on and its input volume 0.05 lower, confirms each read back and each listener
-//       fired, and restores both. Refuses any other device.
+//       On a device whose transport is virtual, as Microsoft Teams Audio: sets its input mute
+//       on and its input volume 0.05 lower, confirms each read back and each listener fired,
+//       and restores both. On another input device, only while no process runs it
+//       (`kAudioDevicePropertyDeviceIsRunningSomewhere` 0), as the MacBook Pro Microphone: its
+//       input mute alone, the same way. Prints coreaudiod's settings files' modification times
+//       before and after, to see when it saves. Refuses any other device.
 import AppKit
 import AudioToolbox
 import CoreAudio
@@ -387,9 +390,19 @@ private func zip(_ a: Double?, _ b: Double?) -> (Double, Double)? {
 
 @MainActor private func soundWrite(_ deviceName: String) {
     guard let device = devices().first(where: { name($0) == deviceName }) else { return print("no device \(deviceName)") }
-    guard value(device, kAudioDevicePropertyTransportType, global, UInt32(0)) == kAudioDeviceTransportTypeVirtual else {
-        return print("\(deviceName) is not virtual; the probe writes to virtual devices only")
+    let virtual = value(device, kAudioDevicePropertyTransportType, global, UInt32(0)) == kAudioDeviceTransportTypeVirtual
+    guard virtual || (streams(device, input) > 0 && value(device, kAudioDevicePropertyDeviceIsRunningSomewhere, global,
+                                                         UInt32(1)) == 0) else {
+        return print("\(deviceName) is neither virtual nor an input device no process runs; the probe leaves it alone")
     }
+    func saved() -> String {
+        ["DeviceSettings", "SystemSettings"].map { file in
+            let path = "/Library/Preferences/Audio/com.apple.audio.\(file).plist"
+            let date = (try? FileManager.default.attributesOfItem(atPath: path))?[.modificationDate] as? Date
+            return "\(file) \(date.map { "\($0)" } ?? "?")"
+        }.joined(separator: ", ")
+    }
+    print("saved: \(saved())")
     let muteSelector = kAudioDevicePropertyMute, volumeSelector = kAudioHardwareServiceDeviceProperty_VirtualMainVolume
     print("before: input \(describeLevel(device, input))")
     var heard: [String] = []
@@ -423,7 +436,7 @@ private func zip(_ a: Double?, _ b: Double?) -> (Double, Double)? {
     } else {
         print("no input mute")
     }
-    if has(device, volumeSelector, input), let level = value(device, volumeSelector, input, Float32(0)) {
+    if virtual, has(device, volumeSelector, input), let level = value(device, volumeSelector, input, Float32(0)) {
         let lower = max(0, level - 0.05)
         let status = set(volumeSelector, lower)
         print("\(stamp(start)) volume reads \(value(device, volumeSelector, input, Float32(9)) ?? 9) at once")
@@ -434,7 +447,8 @@ private func zip(_ a: Double?, _ b: Double?) -> (Double, Double)? {
         settle()
         print(String(format: "volume restored to %.2f: reads %.2f", level, value(device, volumeSelector, input, Float32(9)) ?? 9))
     } else {
-        print("no input volume")
+        print(virtual ? "no input volume" : "input volume left alone")
     }
     print("after: input \(describeLevel(device, input))")
+    print("saved: \(saved())")
 }
