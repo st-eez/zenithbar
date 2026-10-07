@@ -29,9 +29,10 @@ struct Battery: Hashable {
         CFRunLoopAddSource(CFRunLoopGetMain(), source?.takeRetainedValue(), .defaultMode)
     }
 
-    /// The battery image of Steve's SketchyBar helper, ported: a filled body with the percent
-    /// inside it, light over the empty part and dark over the filled one, and a bolt on AC.
-    /// Its 51 by 20 unit canvas showed at 0.85 pt a unit there.
+    /// The battery of the bar's line style, Steve's choice on 2026-10-07: an outline in SF
+    /// Symbols' 1.3 pt strokes with a solid fill inside it to the charge, the percent inside,
+    /// light over the empty part and dark over the fill, and a bolt on AC. Its 51 by 20 unit
+    /// canvas shows at 0.85 pt a unit, as the SketchyBar helper's filled body it replaces.
     /// The image, its size, and where its ink, the body to the end of its nub, runs.
     func image(foreground: NSColor, background: NSColor, scale: CGFloat) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {
         let unit: CGFloat = 0.85, size = CGSize(width: 51 * unit, height: 20 * unit)
@@ -43,38 +44,43 @@ struct Battery: Hashable {
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
         defer { NSGraphicsContext.restoreGraphicsState() }
-        let fraction = CGFloat(percent) / 100
-        let body = NSBezierPath(roundedRect: NSRect(x: 1, y: 3, width: 27, height: 14), xRadius: 4, yRadius: 4)
-        let trough = foreground.blended(withFraction: 0.55, of: background) ?? foreground
-        trough.setFill()
-        body.fill()
+        let line = 1.3 / unit, outer = NSRect(x: 1, y: 2, width: 30, height: 16)
+        let outline = foreground.blended(withFraction: 0.45, of: background) ?? foreground
+        let body = NSBezierPath(roundedRect: outer.insetBy(dx: line / 2, dy: line / 2), xRadius: 4.5 - line / 2,
+                                yRadius: 4.5 - line / 2)
+        body.lineWidth = line
+        outline.setStroke()
+        body.stroke()
+        outline.setFill()
+        NSBezierPath(roundedRect: NSRect(x: 32, y: 7, width: 2, height: 6), xRadius: 1, yRadius: 1).fill()
+        // The fill sits a unit clear of the outline, as in the native menu bar's battery.
+        let inner = outer.insetBy(dx: line + 0.9, dy: line + 0.9)
+        let filled = NSRect(x: inner.minX, y: inner.minY, width: inner.width * CGFloat(percent) / 100, height: inner.height)
         context.saveGState()
-        body.addClip()
+        NSBezierPath(roundedRect: inner, xRadius: 2.2, yRadius: 2.2).addClip()
         foreground.setFill()
-        NSRect(x: 1, y: 3, width: 27 * fraction, height: 14).fill()
+        filled.fill()
         context.restoreGState()
-        let font = NSFont.monospacedDigitSystemFont(ofSize: percent == 100 ? 10 : 11.5, weight: .semibold)
+        let font = NSFont.monospacedDigitSystemFont(ofSize: percent == 100 ? 10 : 11, weight: .bold)
         let number = String(percent) as NSString
         let textSize = number.size(withAttributes: [.font: font])
-        let origin = NSPoint(x: (charging ? 12 : 14.5) - textSize.width / 2, y: 10 - textSize.height / 2 + 0.5)
+        let origin = NSPoint(x: (charging ? 13.5 : 16) - textSize.width / 2, y: 10 - textSize.height / 2 + 0.5)
         number.draw(at: origin, withAttributes: [.font: font, .foregroundColor: foreground])
         context.saveGState()
-        NSRect(x: 1, y: 3, width: 27 * fraction, height: 14).clip()
+        filled.clip()
         number.draw(at: origin, withAttributes: [.font: font, .foregroundColor: background])
         context.restoreGState()
-        trough.setFill()
-        NSBezierPath(roundedRect: NSRect(x: 29, y: 7.5, width: 2, height: 5), xRadius: 1, yRadius: 1).fill()
         if charging {
             let bolt = NSBezierPath()
-            bolt.move(to: NSPoint(x: 25, y: 16))
-            for point in [NSPoint(x: 20.5, y: 9), NSPoint(x: 23.5, y: 9), NSPoint(x: 22, y: 4),
-                          NSPoint(x: 27.5, y: 11.5), NSPoint(x: 24, y: 11.5)] { bolt.line(to: point) }
+            bolt.move(to: NSPoint(x: 27.6, y: 14.5))
+            for point in [NSPoint(x: 24.4, y: 9.4), NSPoint(x: 26.5, y: 9.4), NSPoint(x: 25.4, y: 5.5),
+                          NSPoint(x: 28.6, y: 10.8), NSPoint(x: 26.5, y: 10.8)] { bolt.line(to: point) }
             bolt.close()
-            background.setFill()
+            (percent >= 85 ? background : foreground).setFill()
             bolt.fill()
         }
-        // The body starts at 1 unit and the nub ends at 31, after the 9.5 unit shift.
-        return context.makeImage().map { ($0, size, 10.5 * unit...40.5 * unit) }
+        // The body starts at 1 unit and the nub ends at 34, after the 9.5 unit shift.
+        return context.makeImage().map { ($0, size, 10.5 * unit...43.5 * unit) }
     }
 }
 

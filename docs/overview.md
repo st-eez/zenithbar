@@ -103,8 +103,9 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for Zenith's 
   From a Kosmos without the field, Zenith joins by number.
 - **Icons:** SF Symbols at 14 to 16 pt (the speaker, Wi-Fi, a plugin's `symbol`, as the
   agents' sparkles), an Ethernet port drawn in SF's 1.3 pt strokes ([network.md](network.md)),
-  and the filled battery with its percent inside. Steve tried an outlined battery on
-  2026-10-07 and rejected it as too faint. An SF Symbol drawn into a rect of its size
+  and a battery in the same line style: an outline with a solid fill inside to the charge
+  and the percent cut out of the fill, 25 by 14 pt. An outline holding only the number was
+  too faint (Steve, 2026-10-07). An SF Symbol drawn into a rect of its size
   stretches, as it draws past its size, so each is drawn at its own size and cropped to its
   ink (`Sources/zenith/Symbols.swift`).
 - **The other items:** the clock redraws at each minute's start on a timer set for it,
