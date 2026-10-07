@@ -2,8 +2,9 @@ import AppKit
 import ZenithBarCore
 import ZenithBarKit
 
-/// Holds what the bars show, and redraws them on each change: Kosmos's state, the clock,
-/// the battery, the network, Bluetooth, the sound, the plugins' items and the hovered item.
+/// Holds what the bars show, and redraws them on each change: Kosmos's workspaces and front
+/// app on the left; on the right the built-in items, each from its module, and the plugins'
+/// items; and the hovered item.
 @MainActor final class Controller {
     private var bars: [CGDirectDisplayID: Bar] = [:]
     /// Each screen's UUID, which Kosmos's snapshot names its displays by.
@@ -12,43 +13,20 @@ import ZenithBarKit
     private var theme = Theme.fallback
     private var config = Config()
     private var settingsWatches: [DispatchSourceFileSystemObject] = []
-    private var battery = Battery.read()
-    private var sound: Sound!
-    /// Scroll steps carried between events, for the speaker and the microphone.
-    private var scrolls: [String: ScrollSteps] = [:]
-    private var network: Network!
-    private var bluetooth: Bluetooth!
+    /// From the bar's right end inward: the calendar, the battery, the network, Bluetooth, the
+    /// speaker and the microphone, the native menu bar's order with the network in Wi-Fi's place
+    /// and Bluetooth where Omarchy places it, left of the network. The plugins' items follow.
+    private let modules: [BarModule] = [CalendarModule(), BatteryModule(), NetworkModule(), BluetoothModule(), SoundModule()]
     private var hovered: (key: String, display: CGDirectDisplayID)?
-    private var clock: Timer?
-    private var locationLog: LocationLog?
     private lazy var kosmos = KosmosLink { [weak self] state in onMain { self?.received(state) } }
     private lazy var plugins = Plugins { [weak self] item in self?.received(item) }
     /// The plugins' items, in the order they first printed them.
     private var pluginItems: [(key: String, item: PluginItem)] = []
     /// The page each plugin item's panel shows.
     private var pages: [String: Int] = [:]
+    private var pluginImages = DrawingCache<Item?>()
     private lazy var popup = Popup(selected: { [weak self] page in self?.select(page: page) },
                                    exited: { [weak self] in self?.pointerMayHaveLeft() })
-    private lazy var networkPanel: NetworkPanel = {
-        let panel = NetworkPanel(network: network)
-        panel.host = .init(takeKeyboard: { [weak self] field in self?.popup.takeKeyboard(for: field) },
-                           giveKeyboardBack: { [weak self] in self?.popup.giveKeyboardBack() },
-                           resized: { [weak self] in self?.popup.fit() },
-                           pointerMayHaveLeft: { [weak self] in self?.pointerMayHaveLeft() })
-        return panel
-    }()
-    private lazy var soundPanel: SoundPanel = {
-        let panel = SoundPanel(sound: sound)
-        panel.resized = { [weak self] in self?.popup.fit() }
-        return panel
-    }()
-    private lazy var bluetoothPanel: BluetoothPanel = {
-        let panel = BluetoothPanel(bluetooth: bluetooth)
-        panel.resized = { [weak self] in self?.popup.fit() }
-        return panel
-    }()
-    /// The sound panel opens under the speaker or the microphone, whichever opened it.
-    private var soundShown: Bool { popup.shown.map { ["volume", "mic"].contains($0.key) } ?? false }
 
     func start() {
         guard kosmos.start() else {
@@ -57,63 +35,50 @@ import ZenithBarKit
         }
         readSettings()
         watchSettings()
-        sound = Sound { [weak self] in
-            guard let self else { return }
-            render()
-            if soundShown { soundPanel.update() }
-        }
-        sound.keepBuiltInMic = config.keepBuiltInMic
-        network = Network { [weak self] glyph in
-            guard let self else { return }
-            if glyph { render() }
-            if popup.shown?.key == "network" { networkPanel.refresh() }
-        }
-        bluetooth = Bluetooth { [weak self] in
-            guard let self else { return }
-            render()
-            if popup.shown?.key == "bluetooth" { bluetoothPanel.update() }
-        }
-        Battery.watch { [weak self] in
-            self?.battery = Battery.read()
-            self?.render()
+        let panelHost = PanelHost(takeKeyboard: { [weak self] field in self?.popup.takeKeyboard(for: field) },
+                                  giveKeyboardBack: { [weak self] in self?.popup.giveKeyboardBack() },
+                                  resized: { [weak self] in self?.popup.fit() },
+                                  pointerMayHaveLeft: { [weak self] in self?.pointerMayHaveLeft() })
+        for module in modules {
+            module.start(ModuleHost(changed: { [weak self, unowned module] icon in self?.changed(module, icon: icon) },
+                                    panel: panelHost))
         }
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil,
-                                               queue: .main) { _ in onMain { self.placeBars() } }
+                                               queue: .main) { [weak self] _ in onMain { self?.placeBars() } }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil,
-                                                          queue: .main) { _ in
+                                                          queue: .main) { [weak self] _ in
             onMain {
-                self.battery = Battery.read()
-                self.sound.read()
-                self.network.read()
-                self.bluetooth.read()
-                self.tick()
+                guard let self else { return }
+                for module in self.modules { module.wake() }
                 self.kosmos.refresh()
                 self.plugins.runAll(event: "wake")
             }
         }
         placeBars()
-        tick()
-        locationLog = LocationLog()
         #if DEBUG
         watchTestHooks()
         #endif
     }
 
-    #if DEBUG
-    /// The microphone item as a test hook draws it.
-    private var micShown: MicState?
+    private func module(for key: String) -> BarModule? { modules.first { $0.keys.contains(key) } }
 
+    private func changed(_ module: BarModule, icon: Bool) {
+        if icon { render() }
+        if let shown = popup.shown, module.keys.contains(shown.key) { module.refreshPanel() }
+    }
+
+    #if DEBUG
     /// In debug builds only, as any local process can post the notification: commands for
     /// testing panels without the pointer, posted as a distributed notification
     /// `io.github.st-eez.zenithbar.test` whose object is the command, as `zenithbar-probe send`
-    /// posts it: `open <item>` on the first display showing it, `close`, and for the network
-    /// panel `network speedtest`, `network allow` and `network password <name>`, as clicks on
-    /// them would; `bluetooth connected <percent> <name>` draws a paired device connected.
+    /// posts it: `open <item>` on the first display showing it, `close`, and each module's own
+    /// (`BarModule.test`).
     private func watchTestHooks() {
         DistributedNotificationCenter.default().addObserver(forName: .init("io.github.st-eez.zenithbar.test"), object: nil,
-                                                            queue: .main) { note in
+                                                            queue: .main) { [weak self] note in
             let words = (note.object as? String ?? "").split(separator: " ", maxSplits: 2).map(String.init)
             onMain {
+                guard let self else { return }
                 log.info("Test hook: \(words.joined(separator: " "), privacy: .public)")
                 switch (words.first, words.dropFirst().first) {
                 case ("open", let key?):
@@ -121,17 +86,10 @@ import ZenithBarKit
                         self.openPopup(key, display: display)
                     }
                 case ("close", _): self.popup.close()
-                case ("network", "speedtest"): self.networkPanel.pressSpeedTest()
-                case ("network", "allow"): self.networkPanel.pressAllow()
-                case ("network", "password"): if words.count > 2 { self.networkPanel.pressPassword(words[2]) }
-                case ("bluetooth", "connected"):
-                    // bluetooth connected <percent> <name>, the name last as it has spaces.
-                    let rest = words.count > 2 ? words[2].split(separator: " ", maxSplits: 1).map(String.init) : []
-                    if rest.count == 2 { self.bluetooth.pretend(connected: rest[1], battery: Int(rest[0])) }
-                case ("mic", let state?):
-                    self.micShown = ["live": .live, "muted": .muted, "off": .hidden][state]
-                    self.render()
-                default: log.error("Unknown test hook \(words.joined(separator: " "), privacy: .public)")
+                default:
+                    if !self.modules.contains(where: { $0.test(words) }) {
+                        log.error("Unknown test hook \(words.joined(separator: " "), privacy: .public)")
+                    }
                 }
             }
         }
@@ -150,7 +108,7 @@ import ZenithBarKit
             if let config = Config(json: data) { self.config = config } else { log.error("Could not read config.json") }
         }
         plugins.configure(config.plugins)
-        sound?.keepBuiltInMic = config.keepBuiltInMic
+        for module in modules { module.configure(config) }
         // A plugin gone from config.json takes its items off the bar, and their panel with them.
         pluginItems.removeAll { !plugins.owns($0.item.item) }
         pages = pages.filter { page in pluginItems.contains { $0.key == page.key } }
@@ -158,7 +116,7 @@ import ZenithBarKit
             popup.close()
         }
         // In the new theme's colors.
-        if let shown = popup.shown, ["network", "bluetooth", "volume", "mic"].contains(shown.key) {
+        if let shown = popup.shown, module(for: shown.key) != nil {
             openPopup(shown.key, display: shown.display)
         }
     }
@@ -208,18 +166,6 @@ import ZenithBarKit
         if popup.shown?.key == key { openPopup(key, display: popup.shown!.display) }
     }
 
-    /// Redraws at each minute's start, on a timer set for it rather than a tick each second.
-    private func tick() {
-        clock?.invalidate()
-        render()
-        let timer = Timer(fire: nextMinute(after: Date()), interval: 0, repeats: false) { _ in
-            onMain { self.tick() }
-        }
-        timer.tolerance = 0.05
-        RunLoop.main.add(timer, forMode: .common)
-        clock = timer
-    }
-
     /// A bar for each screen.
     private func placeBars() {
         let screens = NSScreen.screens
@@ -258,10 +204,10 @@ import ZenithBarKit
             case .hidden: hovered?.key == key && hovered?.display == display ? theme.foreground : theme.dim
             }
             var text = NSAttributedString(
-                string: pill.name, attributes: [.font: font(14, bold: pill.emphasis == .focused), .foregroundColor: color.nsColor])
+                string: pill.name, attributes: [.font: barFont(14, bold: pill.emphasis == .focused), .foregroundColor: color.nsColor])
             if !pill.glyphs.isEmpty {
                 text = joined(text, NSAttributedString(string: pill.glyphs, attributes: [
-                    .font: NSFont(name: "sketchybar-app-font", size: 14) ?? font(14), .foregroundColor: color.nsColor,
+                    .font: NSFont(name: "sketchybar-app-font", size: 14) ?? barFont(14), .foregroundColor: color.nsColor,
                 ]), gap: 8, centered: true)
             }
             return (key, Item(content: .text(text)))
@@ -269,182 +215,47 @@ import ZenithBarKit
         if let app = row.frontApp {
             // Short enough that the name, last on the left, rarely meets the right run or the notch.
             let name = app.count > 24 ? app.prefix(23) + "…" : app
-            let text = NSAttributedString(string: name, attributes: [.font: font(13), .foregroundColor: theme.foreground.nsColor])
+            let text = NSAttributedString(string: name, attributes: [.font: barFont(13), .foregroundColor: theme.foreground.nsColor])
             items.append(("front", Item(content: .text(text))))
         }
         return items
     }
 
-    /// From the bar's right end inward: the calendar, the battery, the network, Bluetooth, the
-    /// volume, the microphone while it shows, then the plugins' items: the system items in the
-    /// native menu bar's order, with Bluetooth where Omarchy places it, left of the network.
+    /// The modules' items, then the plugins'.
     private func rightItems(scale: CGFloat) -> [(key: String, item: Item)] {
-        var items: [(key: String, item: Item)] = []
-        let (date, time) = clockText(Date())
-        let bold = [NSAttributedString.Key.font: font(13, bold: true), .foregroundColor: theme.foreground.nsColor]
-        let calendar = joined(NSAttributedString(string: date, attributes: bold),
-                              NSAttributedString(string: time, attributes: bold), gap: 8)
-        items.append(("calendar", Item(content: .text(calendar))))
-        if let battery, let (image, size, ink) = batteryImage(battery, scale: scale) {
-            items.append(("battery", Item(content: .image(image, size: size, ink: ink))))
-        }
-        let route = networkIcon(network.route)
-        if let (image, size, ink) = networkImage(route.icon, color: route.dim ? theme.dim : theme.foreground, scale: scale) {
-            items.append(("network", Item(content: .image(image, size: size, ink: ink))))
-        }
-        if let icon = bluetooth.state.icon,
-           let (image, size, ink) = symbolImage(icon.glyph, key: "bluetooth", color: icon == .off ? theme.dim : theme.foreground,
-                                                scale: scale, glyph: true) {
-            items.append(("bluetooth", Item(content: .image(image, size: size, ink: ink))))
-        }
-        let output = sound.state.defaultDevice(.output)
-        let speaker = outputSymbol(output, bluetooth: output.flatMap { sound.bluetooth(for: $0) })
-        if let (image, size, ink) = symbolImage(speaker.name, key: "volume", color: speaker.dim ? theme.dim : theme.foreground,
-                                                scale: scale) {
-            items.append(("volume", Item(content: .image(image, size: size, ink: ink))))
-        }
-        var micState = sound.state.mic
-        #if DEBUG
-        micState = micShown ?? micState
-        #endif
-        if let mic = micState.symbol,
-           let (image, size, ink) = symbolImage(mic.name, key: "mic", color: mic.alert ? theme.alert : theme.foreground,
-                                                scale: scale) {
-            items.append(("mic", Item(content: .image(image, size: size, ink: ink))))
-        }
+        var items = modules.flatMap { $0.items(scale: scale, theme: theme) }
         for (key, item) in pluginItems where !item.hidden {
             let color = item.alert ? theme.alert : theme.foreground
-            if let symbol = item.symbol, let (image, size, ink) = symbolImage(symbol, key: key, color: color, scale: scale) {
-                items.append((key, Item(content: .image(image, size: size, ink: ink))))
+            if let symbol = item.symbol, let image = pluginImages.symbolItem(symbol, slot: key, color: color, scale: scale) {
+                items.append((key, image))
                 continue
             }
-            let glyph = NSAttributedString(string: item.icon, attributes: [.font: font(16), .foregroundColor: color.nsColor])
+            let glyph = NSAttributedString(string: item.icon, attributes: [.font: barFont(16), .foregroundColor: color.nsColor])
             items.append((key, Item(content: .text(glyph), center: .ink)))
         }
         return items
     }
 
-    private struct BatteryDrawing: Hashable {
-        var battery: Battery
-        var foreground: RGBA, background: RGBA
-        var scale: CGFloat
-    }
-
-    /// The battery's image, drawn again only when what it shows changes: an item's image
-    /// compares by identity, so a new image redraws its layer on every render.
-    private var batteryImages: [CGFloat: (key: BatteryDrawing, image: (CGImage, CGSize, ClosedRange<CGFloat>))] = [:]
-
-    private func batteryImage(_ battery: Battery, scale: CGFloat) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {
-        let key = BatteryDrawing(battery: battery, foreground: theme.foreground, background: theme.background, scale: scale)
-        if let cached = batteryImages[scale], cached.key == key { return cached.image }
-        guard let image = battery.image(foreground: theme.foreground.nsColor, background: theme.background.nsColor,
-                                        scale: scale) else { return nil }
-        batteryImages[scale] = (key, image)
-        return image
-    }
-
-    private struct NetworkDrawing: Equatable {
-        var icon: NetworkIcon
-        var color: RGBA
-    }
-
-    /// The network's icon, drawn again only when it changes, as the battery's image is.
-    private var networkImages: [CGFloat: (key: NetworkDrawing, image: (CGImage, CGSize, ClosedRange<CGFloat>))] = [:]
-
-    private func networkImage(_ icon: NetworkIcon, color: RGBA, scale: CGFloat) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {
-        let key = NetworkDrawing(icon: icon, color: color)
-        if let cached = networkImages[scale], cached.key == key { return cached.image }
-        guard let image = networkDrawing(icon, size: 14, color: color.nsColor).flatMap({ inkImage($0, scale: scale) }) else { return nil }
-        networkImages[scale] = (key, image)
-        return image
-    }
-
-    private struct SymbolDrawing: Equatable {
-        var name: String
-        var color: RGBA
-    }
-
-    /// Each item's symbol, the volume's, the microphone's, Bluetooth's glyph and plugins', at each display
-    /// scale, drawn again only when it changes, as the battery's image is.
-    private var symbolImages: [String: (key: SymbolDrawing, image: (CGImage, CGSize, ClosedRange<CGFloat>))] = [:]
-
-    /// At 14 pt, as the network's icon; `glyph` draws `name` as text in the bar's font at 16 pt,
-    /// as the Ethernet glyph.
-    private func symbolImage(_ name: String, key item: String, color: RGBA, scale: CGFloat,
-                             glyph isGlyph: Bool = false) -> (CGImage, CGSize, ClosedRange<CGFloat>)? {
-        let key = SymbolDrawing(name: name, color: color), slot = "\(item) \(scale)"
-        if let cached = symbolImages[slot], cached.key == key { return cached.image }
-        let drawing = isGlyph ? glyph(name, font: font(16), color: color.nsColor)
-            : symbol(name, value: nil, pointSize: 14, color: color.nsColor)
-        guard let image = drawing.flatMap({ inkImage($0, scale: scale) }) else { return nil }
-        symbolImages[slot] = (key, image)
-        return image
-    }
-
-    /// At 14 pt, about 12 pt tall, as the battery; at 16 pt the Wi-Fi's arcs outweighed the
-    /// speaker beside it.
-    private func networkDrawing(_ icon: NetworkIcon, size: CGFloat, color: NSColor) -> NSImage? {
-        switch icon {
-        case let .symbol(name, value): symbol(name, value: value, pointSize: size, color: color)
-        // The glyph at 16 pt, as the bar's other Nerd Font icons.
-        case let .glyph(text): glyph(text, font: font(size + 2), color: color)
-        }
-    }
-
-    /// `first` then `second` with `gap` points between their ink, kerning away the blank the
-    /// fonts leave after the one and before the other. `centered` raises or lowers `second`'s
-    /// ink to center on `first`'s figures, as a pill's app glyphs on its number.
-    private func joined(_ first: NSAttributedString, _ second: NSAttributedString, gap: CGFloat,
-                        centered: Bool = false) -> NSAttributedString {
-        guard first.length > 0 else { return second }
-        let after = first.size().width - inkBounds(first).maxX
-        let text = NSMutableAttributedString(attributedString: first)
-        text.addAttribute(.kern, value: gap - after - inkBounds(second).minX, range: NSRange(location: text.length - 1, length: 1))
-        let tail = NSMutableAttributedString(attributedString: second)
-        if centered, let font = first.firstFont {
-            tail.addAttribute(.baselineOffset, value: font.capHeight / 2 - inkBounds(second).midY,
-                              range: NSRange(location: 0, length: tail.length))
-        }
-        text.append(tail)
-        return text
-    }
-
-    private func font(_ size: CGFloat, bold: Bool = false) -> NSFont {
-        NSFont(name: bold ? "JetBrainsMonoNF-Bold" : "JetBrainsMonoNF-Regular", size: size)
-            ?? .monospacedSystemFont(ofSize: size, weight: bold ? .bold : .regular)
-    }
-
-    enum Button { case left, right, middle }
-
-    func clicked(_ key: String, button: Button, display: CGDirectDisplayID) {
+    func clicked(_ key: String, button: MouseButton, display: CGDirectDisplayID) {
         if key.hasPrefix("plugin.") {
             return pluginClicked(key, button: button, display: display)
         }
-        switch (key, button) {
-        // Omarchy's speaker: a left or middle click opens the panel, a right click mutes.
-        case ("volume", .left), ("volume", .middle), ("mic", .middle):
-            return popup.shown?.key == key ? popup.close() : openPopup(key, display: display)
-        case ("volume", .right): return sound.toggleMute(.output, because: "speaker right click")
-        // Omarchy's microphone: a left click mutes.
-        case ("mic", .left): return sound.toggleMic()
-        default: break
+        if let module = module(for: key) {
+            if module.clicked(key, button: button) == .togglePanel {
+                if popup.shown?.key == key { popup.close() } else { openPopup(key, display: display) }
+            }
+            return
         }
         guard button == .left else { return }
         if key.hasPrefix("space.") {
             kosmos.send(["workspace", String(key.dropFirst(6))])
         } else if key == "front" {
             NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Mission Control.app"))
-        } else if key == "network" || key == "bluetooth" {
-            if popup.shown?.key == key { popup.close() } else { openPopup(key, display: display) }
         }
     }
 
-    /// A scroll on the speaker or the microphone steps its level by 5%, as Omarchy's do.
     func scrolled(_ key: String, delta: Double, precise: Bool, momentum: Bool) {
-        guard key == "volume" || key == "mic" else { return }
-        let steps = scrolls[key, default: ScrollSteps()].steps(delta: delta, precise: precise, momentum: momentum)
-        guard steps != 0 else { return }
-        if key == "volume" { sound.stepOutput(steps) } else { sound.stepInput(steps) }
+        module(for: key)?.scrolled(key, delta: delta, precise: precise, momentum: momentum)
     }
 
     func hover(_ key: String?, display: CGDirectDisplayID) {
@@ -458,7 +269,7 @@ import ZenithBarKit
 
     /// A left click opens or closes the item's panel, a middle click shows its next page,
     /// and a right click runs its plugin now, as SketchyBar's agents item did.
-    private func pluginClicked(_ key: String, button: Button, display: CGDirectDisplayID) {
+    private func pluginClicked(_ key: String, button: MouseButton, display: CGDirectDisplayID) {
         switch button {
         case .left: if popup.shown?.key == key { popup.close() } else { openPopup(key, display: display) }
         case .middle:
@@ -470,9 +281,7 @@ import ZenithBarKit
     }
 
     private func openPopup(_ key: String, display: CGDirectDisplayID) {
-        if key == "network" { return openNetwork(display: display) }
-        if key == "bluetooth" { return openBluetooth(display: display) }
-        if key == "volume" || key == "mic" { return openSound(key, display: display) }
+        if let module = module(for: key) { return openPanel(of: module, key: key, display: display) }
         guard let item = pluginItems.first(where: { $0.key == key })?.item,
               !item.hidden, !item.pages.isEmpty,
               let bar = bars[display], let frame = bar.frames[key],
@@ -484,33 +293,14 @@ import ZenithBarKit
                    screen: screen.frame, theme: theme, icon: icon)
     }
 
-    private func openNetwork(display: CGDirectDisplayID) {
-        guard let bar = bars[display], let frame = bar.frames["network"],
-              let screen = NSScreen.screens.first(where: { $0.displayID == display }) else { return popup.close() }
-        networkPanel.theme = theme
-        popup.show(networkPanel, key: "network", display: display,
-                   anchor: frame.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY), screen: screen.frame,
-                   theme: theme, closed: { [weak self] in self?.networkPanel.close() })
-        networkPanel.open()
-    }
-
-    private func openBluetooth(display: CGDirectDisplayID) {
-        guard let bar = bars[display], let frame = bar.frames["bluetooth"],
-              let screen = NSScreen.screens.first(where: { $0.displayID == display }) else { return popup.close() }
-        bluetoothPanel.theme = theme
-        popup.show(bluetoothPanel, key: "bluetooth", display: display,
-                   anchor: frame.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY), screen: screen.frame,
-                   theme: theme, closed: { [weak self] in self?.bluetoothPanel.close() })
-        bluetoothPanel.open()
-    }
-
-    private func openSound(_ key: String, display: CGDirectDisplayID) {
+    private func openPanel(of module: BarModule, key: String, display: CGDirectDisplayID) {
         guard let bar = bars[display], let frame = bar.frames[key],
-              let screen = NSScreen.screens.first(where: { $0.displayID == display }) else { return popup.close() }
-        soundPanel.theme = theme
-        soundPanel.update()
-        popup.show(soundPanel, key: key, display: display,
-                   anchor: frame.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY), screen: screen.frame, theme: theme)
+              let screen = NSScreen.screens.first(where: { $0.displayID == display }),
+              let view = module.panel(for: key, theme: theme) else { return popup.close() }
+        popup.show(view, key: key, display: display,
+                   anchor: frame.offsetBy(dx: bar.panel.frame.minX, dy: bar.panel.frame.minY), screen: screen.frame,
+                   theme: theme, closed: { [weak module] in module?.panelClosed() })
+        module.panelOpened()
     }
 
     private func select(page: Int) {
@@ -567,7 +357,7 @@ final class BarView: NSView {
     override func rightMouseDown(with event: NSEvent) { click(event, .right) }
     override func otherMouseDown(with event: NSEvent) { click(event, .middle) }
 
-    private func click(_ event: NSEvent, _ button: Controller.Button) {
+    private func click(_ event: NSEvent, _ button: MouseButton) {
         if let key = key(event) { controller.clicked(key, button: button, display: display) }
     }
     override func mouseMoved(with event: NSEvent) { controller.hover(key(event), display: display) }

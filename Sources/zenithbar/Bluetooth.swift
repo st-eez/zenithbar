@@ -171,7 +171,7 @@ import ZenithBarKit
 
     #if DEBUG
     /// Draws the device named `name` connected with `battery`, until the next read, for captures
-    /// without connecting it (Controller.watchTestHooks).
+    /// without connecting it (`BluetoothModule.test`).
     func pretend(connected name: String, battery: Int?) {
         guard let index = state.devices.firstIndex(where: { $0.name == name }) else { return }
         state.devices[index].connected = true

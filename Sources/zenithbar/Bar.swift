@@ -66,6 +66,30 @@ struct Item: Equatable {
     }
 }
 
+/// JetBrains Mono, the font of Steve's SketchyBar config.
+func barFont(_ size: CGFloat, bold: Bool = false) -> NSFont {
+    NSFont(name: bold ? "JetBrainsMonoNF-Bold" : "JetBrainsMonoNF-Regular", size: size)
+        ?? .monospacedSystemFont(ofSize: size, weight: bold ? .bold : .regular)
+}
+
+/// `first` then `second` with `gap` points between their ink, kerning away the blank the
+/// fonts leave after the one and before the other. `centered` raises or lowers `second`'s
+/// ink to center on `first`'s figures, as a pill's app glyphs on its number.
+func joined(_ first: NSAttributedString, _ second: NSAttributedString, gap: CGFloat,
+            centered: Bool = false) -> NSAttributedString {
+    guard first.length > 0 else { return second }
+    let after = first.size().width - inkBounds(first).maxX
+    let text = NSMutableAttributedString(attributedString: first)
+    text.addAttribute(.kern, value: gap - after - inkBounds(second).minX, range: NSRange(location: text.length - 1, length: 1))
+    let tail = NSMutableAttributedString(attributedString: second)
+    if centered, let font = first.firstFont {
+        tail.addAttribute(.baselineOffset, value: font.capHeight / 2 - inkBounds(second).midY,
+                          range: NSRange(location: 0, length: tail.length))
+    }
+    text.append(tail)
+    return text
+}
+
 private func descent(_ text: NSAttributedString) -> CGFloat {
     var descent: CGFloat = 0
     CTLineGetTypographicBounds(CTLineCreateWithAttributedString(text), nil, &descent, nil)

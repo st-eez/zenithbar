@@ -8,16 +8,6 @@ import ZenithBarKit
 /// the primary interface, read only while it shows; and the Wi-Fi networks from a scan when it
 /// opens, which a click joins, leaves or forgets.
 @MainActor final class NetworkPanel: FlippedView {
-    /// What the controller does for it: take and give back the keyboard for the password
-    /// field, place the panel again when its height changes, and close it when the pointer is
-    /// off it.
-    struct Host {
-        var takeKeyboard: @MainActor (NSView) -> Void
-        var giveKeyboardBack: @MainActor () -> Void
-        var resized: @MainActor () -> Void
-        var pointerMayHaveLeft: @MainActor () -> Void
-    }
-
     enum Status: Equatable {
         case connecting, disconnecting, forgetting
         case failed(String)
@@ -34,7 +24,7 @@ import ZenithBarKit
 
     private let network: Network
     private let wifi: Wifi
-    var host: Host?
+    var host: PanelHost?
     var theme = Theme.fallback { didSet { if theme != oldValue { restyle() } } }
     private(set) var isOpen = false
 
@@ -510,7 +500,7 @@ import ZenithBarKit
         return image
     }
 
-    // MARK: test hooks, in debug builds only (Controller.watchTestHooks)
+    // MARK: test hooks, in debug builds only (NetworkModule.test)
 
     #if DEBUG
     /// Starts the speed test, as a click on its button.
