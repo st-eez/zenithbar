@@ -64,7 +64,7 @@ struct Battery: Hashable {
                                                                 attributes: [.font: Self.digits, .foregroundColor: color]))
         }
         let ink = CTLineGetBoundsWithOptions(lines[0], .useGlyphPathBounds)
-        let boltHeight: CGFloat = 7.5, boltWidth = boltHeight * 0.62, gap: CGFloat = 1
+        let boltHeight: CGFloat = 9, boltWidth = boltHeight * 0.62, gap: CGFloat = 1
         let snap = { (value: CGFloat) in (value * scale).rounded() / scale }
         let left = snap(inner.midX - (ink.width + (charging ? gap + boltWidth : 0)) / 2)
         let origin = CGPoint(x: left - ink.minX, y: snap(inner.midY - ink.midY))

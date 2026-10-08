@@ -110,7 +110,7 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   Bluetooth glyphs at 16 pt ([network.md](network.md), [bluetooth.md](bluetooth.md)), and the battery, Steve's pick on 2026-10-08: a 1 pt outline, 27 by 14 pt,
   on the half point grid so it stays crisp, a solid fill to the charge in the icons' color,
   and the percent inside in SF's condensed heavy digits at 9.5 pt, cut out of the fill and
-  light over the empty part, with a 7.5 pt bolt after them on AC. A 30% fill looked washed
+  light over the empty part, with a 9 pt bolt after them on AC. A 30% fill looked washed
   out beside the solid icons; the solid body before it, with no outline, looked out of place;
   the bar font's dotted zeros crowded "100". An SF Symbol drawn into a rect of its size stretches, as it draws past its size,
   so each icon is drawn at its own size and cropped to its ink
