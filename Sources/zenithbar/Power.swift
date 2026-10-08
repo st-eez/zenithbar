@@ -57,15 +57,20 @@ struct Battery: Hashable {
         foreground.setFill()
         NSBezierPath(roundedRect: NSRect(x: outer.maxX + 1, y: outer.midY - 2.5, width: 1.5, height: 5),
                      xRadius: 0.75, yRadius: 0.75).fill()
-        let font = Self.digits
-        let number = String(percent) as NSString
-        let textWidth = number.size(withAttributes: [.font: font]).width
-        // The digits and the bolt centered together, the digits' capitals on the body's middle.
-        let boltHeight: CGFloat = 7.5, boltWidth = boltHeight * 0.62, gap: CGFloat = 0.8
-        let left = inner.midX - (textWidth + (charging ? boltWidth + gap : 0)) / 2
+        // The digits' and the bolt's ink centered together on the inside, snapped to the pixel
+        // grid: centering on the font's line box set the digits 1 pt high.
+        let lines = [foreground, background].map { color in
+            CTLineCreateWithAttributedString(NSAttributedString(string: String(percent),
+                                                                attributes: [.font: Self.digits, .foregroundColor: color]))
+        }
+        let ink = CTLineGetBoundsWithOptions(lines[0], .useGlyphPathBounds)
+        let boltHeight: CGFloat = 7.5, boltWidth = boltHeight * 0.62, gap: CGFloat = 1
+        let snap = { (value: CGFloat) in (value * scale).rounded() / scale }
+        let left = snap(inner.midX - (ink.width + (charging ? gap + boltWidth : 0)) / 2)
+        let origin = CGPoint(x: left - ink.minX, y: snap(inner.midY - ink.midY))
         let bolt = NSBezierPath()
         if charging {
-            let boltLeft = left + textWidth + gap, bottom = inner.midY - boltHeight / 2
+            let boltLeft = left + ink.width + gap, bottom = inner.midY - boltHeight / 2
             bolt.move(to: NSPoint(x: boltLeft + boltWidth * 0.75, y: bottom + boltHeight))
             for (x, y) in [(0.0, 0.42), (0.42, 0.42), (0.25, 0.0), (1.0, 0.58), (0.58, 0.58)] {
                 bolt.line(to: NSPoint(x: boltLeft + boltWidth * x, y: bottom + boltHeight * y))
@@ -73,11 +78,11 @@ struct Battery: Hashable {
             bolt.close()
         }
         // Light over the empty part, then again in the background's color over the fill.
-        for (color, clip) in [(foreground, nil), (background, filled)] as [(NSColor, NSRect?)] {
+        for (line, color, clip) in [(lines[0], foreground, nil), (lines[1], background, filled)] as [(CTLine, NSColor, NSRect?)] {
             context.saveGState()
             clip?.clip()
-            number.draw(at: NSPoint(x: left, y: inner.midY - font.capHeight / 2 + font.descender),
-                        withAttributes: [.font: font, .foregroundColor: color])
+            context.textPosition = origin
+            CTLineDraw(line, context)
             color.setFill()
             bolt.fill()
             context.restoreGState()
