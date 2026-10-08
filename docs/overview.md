@@ -107,11 +107,11 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
 - **Icons:** solid, Steve's choice on 2026-10-07 after a line style, a thin speaker beside
   solid glyphs, read as clashing: SF Symbols at 14 pt (the filled speaker or AirPods, the
   microphone, Wi-Fi, a plugin's `symbol`, as the agents' sparkles), Material's solid Ethernet port and
-  Bluetooth glyphs at 16 pt ([network.md](network.md), [bluetooth.md](bluetooth.md)), and the battery, a solid body filled to the charge over a
-  fainter trough with the percent and the bolt cut out of it, 25 by 14 pt, its digits 8.5 to
-  10 pt and a 8.5 pt bolt centered together, with room around them, as larger crowded the
-  body. An outline holding only the number was too faint, and an outline around the fill
-  unwanted. An SF Symbol drawn into a rect of its size stretches, as it draws past its size,
+  Bluetooth glyphs at 16 pt ([network.md](network.md), [bluetooth.md](bluetooth.md)), and the battery, Steve's pick on 2026-10-08: a 1 pt outline, 27 by 14 pt,
+  on the half point grid so it stays crisp, a 30% fill to the charge, and the percent inside
+  in SF's condensed heavy digits at 9.5 pt, with a 7.5 pt bolt after them on AC. The solid
+  body before it read as out of place among line icons, and its digits, cut out of the fill,
+  changed color where the fill ended; the bar font's dotted zeros crowded "100". An SF Symbol drawn into a rect of its size stretches, as it draws past its size,
   so each icon is drawn at its own size and cropped to its ink
   (`Sources/zenithbar/Symbols.swift`).
 - **The other items:** the clock redraws at each minute's start on a timer set for it,
