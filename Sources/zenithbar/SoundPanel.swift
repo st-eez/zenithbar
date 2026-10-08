@@ -21,8 +21,8 @@ import ZenithBarCore
     private let master = PanelSwitch()
     /// Says what the switch mutes, as on its own it read as a mystery (Steve, 2026-10-07).
     private let masterLabel = PanelLabel(size: 9.5, bold: true, alignment: .right)
-    /// The setting that keeps the MacBook's microphone when headphones connect, under INPUT
-    /// (docs/sound.md, preferBuiltInMic).
+    /// The setting that keeps the MacBook's microphone when macOS moves the input to a headset,
+    /// under INPUT (docs/sound.md, preferBuiltInMic).
     private let preferLabel = PanelLabel(size: 9.5, bold: true)
     private let preferSwitch = PanelSwitch()
     /// The switch was flipped to this.

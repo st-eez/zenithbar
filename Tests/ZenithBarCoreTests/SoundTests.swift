@@ -208,40 +208,99 @@ private func sides(_ toggle: (mute: Bool, sides: [MuteSide])) -> [String] {
     #expect(!toggle.mute && sides(toggle) == ["89 input"])
 }
 
-@Test func keepsTheBuiltInMicrophoneWhenAirPodsConnect() {
-    let airpodsInput = with(airpodsMic, running: false)
+// preferBuiltInMic's states, from coreaudiod's log of 2026-10-07 (docs/sound.md, preferBuiltInMic).
+private let airpodsInput = with(airpodsMic, running: false)
+private let connected = SoundState(devices: steve.devices + [airpods, airpodsInput], defaultOutput: 82, defaultInput: 89)
+/// macOS's route: the output and the input on the AirPods.
+private let routed = SoundState(devices: connected.devices, defaultOutput: 120, defaultInput: 121)
+/// The output on the AirPods, the input on the MacBook, as preferBuiltInMic leaves them.
+private let kept = SoundState(devices: connected.devices, defaultOutput: 120, defaultInput: 89)
+
+private func switched(_ decision: MicKeeper.Decision?, first: Bool = false) -> Bool {
+    decision == .switchBack(builtIn: microphone, headset: airpodsInput, first: first)
+}
+
+@Test func preferBuiltInMicSwitchesBackEveryRouteOfMacOS() {
+    // A new connection: macOS moves the output and the input in one read, or the output first.
     var keeper = MicKeeper()
-    // AirPods there at launch, their microphone the default: left alone.
-    #expect(keeper.check(SoundState(devices: [microphone, speakers, airpods, airpodsInput], defaultOutput: 120,
-                                    defaultInput: 121)) == nil)
+    #expect(keeper.check(steve, now: 0) == nil)
+    #expect(keeper.check(connected, now: 1) == nil)
+    #expect(switched(keeper.check(routed, now: 2)))
+    #expect(keeper.check(kept, now: 2.1) == nil)
     keeper = MicKeeper()
-    #expect(keeper.check(steve) == nil)
-    // They connect, and macOS makes them the default output and input, in one read or two.
-    let connected = SoundState(devices: steve.devices + [airpods, airpodsInput], defaultOutput: 82, defaultInput: 89)
-    #expect(keeper.check(connected) == nil)
-    var taken = connected
-    taken.defaultOutput = 120
-    taken.defaultInput = 121
-    #expect(keeper.check(taken)?.id == 89)
-    // Steve picks them again in Control Center: that stands.
-    #expect(keeper.check(connected) == nil)
-    #expect(keeper.check(taken) == nil)
-    // They leave and come back: kept again, in one read.
-    #expect(keeper.check(steve) == nil)
-    #expect(keeper.check(taken)?.id == 89)
-    // Picked in the panel before macOS switched: that stands.
-    #expect(keeper.check(steve) == nil)
-    #expect(keeper.check(connected) == nil)
-    keeper.chose("7C-1A-2B-3C-4D-03:input")
-    #expect(keeper.check(taken) == nil)
-    // A Mac without a built-in microphone, as a Mac mini: nothing to keep.
-    var mini = MicKeeper()
-    let noMic = SoundState(devices: [speakers], defaultOutput: 82)
-    #expect(mini.check(noMic) == nil)
-    #expect(mini.check(SoundState(devices: [speakers, airpods, airpodsInput], defaultOutput: 120, defaultInput: 121)) == nil)
+    #expect(keeper.check(connected, now: 0) == nil)
+    #expect(keeper.check(kept, now: 1) == nil)
+    #expect(switched(keeper.check(routed, now: 1.01)))
+    // Back in the ear without disconnecting, as at 21:01:08: the output leaves and comes back
+    // with the input, and the AirPods never leave the device list.
+    #expect(keeper.check(connected, now: 30) == nil)
+    #expect(switched(keeper.check(routed, now: 90)))
+    // Back from the iPhone: they leave the list and come back.
+    #expect(keeper.check(steve, now: 200) == nil)
+    #expect(switched(keeper.check(routed, now: 300)))
+    // A ZenithBar launched, a coreaudiod restarted or the setting turned on, each a new keeper,
+    // with their microphone the default already; after a restart under new IDs, matched by UID.
+    keeper = MicKeeper()
+    #expect(switched(keeper.check(routed, now: 0), first: true))
+    var renumbered = routed
+    renumbered.devices = renumbered.devices.map { device in
+        var device = device
+        device.id += 200
+        return device
+    }
+    renumbered.defaultOutput = 320
+    renumbered.defaultInput = 321
+    var builtIn = microphone, headset = airpodsInput
+    builtIn.id = 289
+    headset.id = 321
+    keeper = MicKeeper()
+    #expect(keeper.check(renumbered, now: 0) == .switchBack(builtIn: builtIn, headset: headset, first: true))
+    // A Mac without a built-in microphone, as a Mac mini: nothing to switch to.
+    keeper = MicKeeper()
+    let mini = SoundState(devices: [speakers, airpods, airpodsInput], defaultOutput: 120, defaultInput: 121)
+    #expect(keeper.check(mini, now: 0) == nil)
     #expect(steve.builtInMic?.id == 89)
     #expect(Config().preferBuiltInMic)
     #expect(Config(json: Data(#"{"preferBuiltInMic":false}"#.utf8))?.preferBuiltInMic == false)
+}
+
+@Test func preferBuiltInMicLeavesAPick() {
+    // Picked in the panel: it stays through a return to the ear, until another is picked.
+    var keeper = MicKeeper()
+    #expect(keeper.check(kept, now: 0) == nil)
+    keeper.chose(airpodsInput.uid)
+    #expect(keeper.check(routed, now: 10) == nil)
+    #expect(keeper.check(connected, now: 20) == nil)
+    #expect(keeper.check(routed, now: 30) == nil)
+    keeper.chose(microphone.uid)
+    #expect(keeper.check(kept, now: 40) == nil)
+    #expect(keeper.check(connected, now: 50) == nil)
+    #expect(switched(keeper.check(routed, now: 60)))
+    // Picked in System Settings' Input list: the input moves alone, and it stays until they
+    // disconnect.
+    #expect(keeper.check(kept, now: 61) == nil)
+    #expect(keeper.check(routed, now: 120) == .leave(headset: airpodsInput, fighting: false))
+    #expect(keeper.check(routed, now: 121) == nil)
+    #expect(keeper.check(connected, now: 130) == nil)
+    #expect(keeper.check(routed, now: 140) == nil)
+    #expect(keeper.check(steve, now: 150) == nil)
+    #expect(switched(keeper.check(routed, now: 160)))
+}
+
+@Test func preferBuiltInMicBacksOffWhenMacOSKeepsPuttingTheHeadsetBack() {
+    var keeper = MicKeeper()
+    #expect(keeper.check(connected, now: 0) == nil)
+    // macOS sets the input again before ZenithBar reads its switch back, three times in a burst.
+    #expect(switched(keeper.check(routed, now: 1)))
+    #expect(switched(keeper.check(routed, now: 1.1)))
+    #expect(switched(keeper.check(routed, now: 1.2)))
+    #expect(keeper.check(routed, now: 1.3) == .leave(headset: airpodsInput, fighting: true))
+    #expect(keeper.check(routed, now: 1.4) == nil)
+    #expect(keeper.check(connected, now: 5) == nil)
+    #expect(keeper.check(routed, now: 6) == nil)
+    // A minute later, after they disconnect, it switches again.
+    #expect(keeper.check(steve, now: 100) == nil)
+    #expect(switched(keeper.check(routed, now: 101)))
 }
 
 @Test func symbolsByDevice() {
@@ -297,6 +356,7 @@ private func sides(_ toggle: (mute: Bool, sides: [MuteSide])) -> [String] {
     let system = AudioObjectID(kAudioObjectSystemObject)
     let volume = kAudioHardwareServiceDeviceProperty_VirtualMainVolume
     let before = soundWatches(steve)
+    #expect(before.contains(AudioWatch(system, kAudioHardwarePropertyServiceRestarted)))
     #expect(before.contains(AudioWatch(system, kAudioHardwarePropertyDevices)))
     #expect(before.contains(AudioWatch(82, volume, kAudioObjectPropertyScopeOutput)))
     #expect(before.contains(AudioWatch(68, kAudioDevicePropertyDeviceIsRunningSomewhere)))

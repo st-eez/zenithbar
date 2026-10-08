@@ -64,8 +64,8 @@ public enum BarStyle: String, Decodable, Sendable {
 public struct Config: Decodable, Equatable, Sendable {
     public var style: BarStyle = .standard
     public var plugins: [Plugin] = []
-    /// Makes the MacBook's microphone the default input again when a Bluetooth headset that
-    /// just connected takes it (docs/sound.md, preferBuiltInMic).
+    /// Makes the MacBook's microphone the default input again whenever macOS makes a Bluetooth
+    /// headset's microphone the default (docs/sound.md, preferBuiltInMic).
     public var preferBuiltInMic = true
     /// A glyph that stands for a named workspace in place of its name, as Steve's `agent`
     /// shows a robot, so it is a number's width (docs/overview.md, workspaces).

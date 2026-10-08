@@ -58,7 +58,7 @@ none hidden:
   which writes only while no process runs the device, on 2026-10-07 at 18:46 with nothing
   recording: its input mute read 1 at once after the write, its listener fired 0.7 ms later,
   it still read 1 300 ms later, and it read 0 after the probe restored it; its volume read
-  0.502 before and after. That every app then hears silence is unconfirmed (section 11).
+  0.502 before and after. That every app then hears silence is unconfirmed (section 13).
 - `zenithbar-probe sound write "Microsoft Teams Audio"`, three runs: setting its input mute
   and its input volume each returned no error in under 2 ms and fired the listener, and the
   value read back unchanged at once and 300 ms later, mute 0 and volume 1.00. Teams' driver
@@ -229,7 +229,8 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
   keys, System Settings, Control Center and other apps with nothing polling, and needs no
   listener of its own: nothing starts when it opens or stops when it closes. A change in the
   device list or a default adds the new devices' listeners and drops the gone ones', as when
-  AirPods connect, leave for another device or take a call.
+  AirPods connect, leave for another device or take a call, and after coreaudiod restarts every
+  listener is added again (section 11).
 - **Dragging** (`PanelSlider`): while dragged, the knob follows the pointer alone, and the
   listener's reading of each step waits for after, so the knob does not jump back; the percent
   and the volume name follow the knob. On release the knob keeps the last value until the
@@ -252,18 +253,58 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
 - **Why:** when AirPods or another Bluetooth headset connect, macOS makes them the default
   output and input. An app opening their microphone drops them into the call profile, whose
   input runs at 24 kHz (section 4), and their output then sounds poor.
-- **What** (`MicKeeper`, `Sound.read`): when the default input becomes a Bluetooth device that
-  connected while ZenithBar ran and has not been the default before, ZenithBar makes the
-  built-in microphone the default input again, and leaves the default output on the headset.
-  The built-in microphone is the built-in input with the UID `BuiltInMicrophoneDevice` or the
-  data source `imic`, as on Steve's M3 Pro; on a Mac without one ZenithBar does nothing. Each
-  switch is logged at notice level, as `preferBuiltInMic, as <headset> became the default input`.
-- **Choices stand:** a Bluetooth microphone Steve picks in the panel's INPUT stays the default
-  until it disconnects. So does one he picks in System Settings or Control Center after
-  ZenithBar's switch, and one connected before ZenithBar started. **Ceiling:** a headset that
-  connected without macOS making it the default, then picked in System Settings or Control
-  Center, is switched back once; picking it in the panel avoids that. The upgrade path is to
-  act only within a few seconds of the headset connecting.
+- **The rule** (`MicKeeper`, `Sound.keep`), Steve's on 2026-10-08: whenever the default input
+  becomes a Bluetooth headset's microphone and Steve did not pick it, ZenithBar makes the
+  built-in microphone the default input again and leaves the default output on the headset.
+  That covers a new connection, AirPods coming back to the ear or from the iPhone, macOS routing
+  again after coreaudiod restarts (section 11), and ZenithBar starting, or the setting turning
+  on, while a headset's microphone is the default. The built-in microphone is the built-in
+  input with the UID `BuiltInMicrophoneDevice` or the data source `imic`, as on Steve's M3 Pro;
+  on a Mac without one ZenithBar does nothing.
+- **macOS's route:** coreaudiod's log marks the defaults macOS sets itself as `transient`
+  (`HALS_DefaultDeviceManager::SetDefaultDevice: 'dIn ' | transient 233:
+  '7C-1A-2B-3C-4D-03:input'`) and a client's write without the mark, but no CoreAudio property
+  says which a default is. Each of macOS's three routes on 2026-10-07 moved the default output to
+  the AirPods 5 to 50 ms before the input: on connecting at 20:41:33, when they came back 80 s
+  after coreaudiod restarted, at 20:52:05, and back in the ear at 21:01:08. So ZenithBar takes a
+  headset's microphone becoming the default within 2 s (`routeWindow`) of the default output
+  moving to the same headset, matched by the Bluetooth address both UIDs begin with, as macOS's
+  route, and switches it back.
+- **Choices stand:** a headset's microphone picked in the panel's INPUT stays the default until
+  the headset leaves CoreAudio's device list, coreaudiod restarts, or Steve picks another input
+  in the panel; the AirPods leaving the ear and coming back keep it. A headset's microphone that
+  becomes the default with no output moving to it, as a pick in System Settings' Input list
+  does, stays the same way, and ZenithBar logs that it leaves it.
+- **What cannot be told apart,** as the output is the only tell:
+  - a pick of the headset as the output, in Control Center or System Settings' Output list, that
+    macOS follows by moving the input too reads as macOS's route, and the input is switched back.
+    Whether macOS moves the input then is untested;
+  - a pick in System Settings within 2 s of the output moving to the headset reads as macOS's
+    route;
+  - macOS moving only the input to a headset whose output is the default already reads as a pick,
+    and the microphone stays until the headset disconnects. None was seen on 2026-10-07;
+  - a headset's microphone that is the default at launch, after coreaudiod restarts, or when the
+    setting turns on is switched back, whoever picked it.
+
+  A pick in the panel always holds. There is no upgrade path through public API: the `transient`
+  mark shows only in coreaudiod's log.
+- **Not fighting macOS:** ZenithBar acts only when the default input changes to a headset's
+  microphone, so a write that fails is not retried at every read. When macOS puts the same
+  headset's microphone back after ZenithBar switched away from it three times within 60 s
+  (`fightLimit`, `fightWindow`), ZenithBar leaves it until it disconnects and logs that it backed
+  off. Three, as macOS set the AirPods' input three times within 120 ms when they connected at
+  20:41:33, so a switch can land inside such a burst.
+- **Logs,** at notice level (section 3): each switch as `preferBuiltInMic, as macOS moved the
+  default output and input to steez AirPods ANC`, or `as steez AirPods ANC was the default input
+  at launch`, `after coreaudiod restarted` or `when PREFER MACBOOK MIC turned on`, with the
+  defaults before and after and CoreAudio's status; each microphone left as `preferBuiltInMic
+  leaves <device> until it disconnects, as` the pick or the back off.
+- **2026-10-07's miss:** the rule until then acted only on a headset that connected while
+  ZenithBar ran and had not been the default before. ZenithBar's log shows it switched at
+  20:41:33, on connecting, and at 20:52:05, as its reads during coreaudiod's restart listed the
+  AirPods anew. At 21:01:08 the AirPods came back to the ear without leaving the device list,
+  macOS moved the output and the input to them, and ZenithBar did nothing, until Steve picked
+  the MacBook Pro Microphone in the panel at 21:01:36.
 - **Setting:** the panel's PREFER MACBOOK MIC switch, under INPUT, or `"preferBuiltInMic":
   false` in `~/.config/zenithbar/config.json`; it is on when the key is missing, and ZenithBar
   reads a change at once. "Prefer", Steve's word (2026-10-07), as a microphone he picks stays.
@@ -273,10 +314,55 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
 - **Apps with their own microphone setting,** as Discord, Zoom and Microsoft Teams, use the
   device chosen there and ignore the default: set them to "MacBook Pro Microphone" or to
   "Default" for this to keep the headset out of the call profile.
-- **Untested:** no Bluetooth headset connected while this was built; the unit tests cover the
-  states (`keepsTheBuiltInMicrophoneWhenAirPodsConnect`).
+- **Untested:** no Bluetooth headset was connected while this rule was built; the switches of
+  2026-10-07 were the earlier rule's. The unit tests cover the states
+  (`preferBuiltInMicSwitchesBackEveryRouteOfMacOS`, `preferBuiltInMicLeavesAPick`,
+  `preferBuiltInMicBacksOffWhenMacOSKeepsPuttingTheHeadsetBack`).
 
-## 11. AirPods listening modes: not possible
+## 11. coreaudiod restarting
+
+- **What a restart breaks:** Apple's header (`AudioHardware.h`,
+  `kAudioHardwarePropertyServiceRestarted`): "When a reset happens, any state the client has,
+  such as cached data or added listeners, must be re-established by the client." The device IDs
+  are renumbered too.
+- **What ZenithBar saw on 2026-10-07:** coreaudiod crashed (section 12) and launchd started it
+  again at 20:50:45. ZenithBar's listeners on the system object still fired: at 20:50:47 it read
+  the new device list and removed its listeners on IDs 68, 89, 124 and 130, which CoreAudio
+  logged as `AudioObjectRemovePropertyListenerBlock: no object with given ID`, and added the new
+  devices'; at 20:52:05 the MacBook Pro Microphone read as 265, 89 before. So on macOS 27 the
+  system object's listeners outlived that restart, and the device list's listener caught the
+  new IDs, but nothing in Apple's documentation promises either.
+- **What ZenithBar does:** it listens to `kAudioHardwarePropertyServiceRestarted` on the system
+  object with its other listeners (`soundWatches`). The system object reads as lacking the
+  property (`AudioObjectHasProperty` false) while adding its listener returns no error
+  (`zenithbar-probe sound restart`, 2026-10-08), so ZenithBar adds it without asking. When it
+  fires, the next read:
+  - removes every listener ZenithBar added, by the ID it was added on, and adds every one the
+    new state needs, so each is registered once whether CoreAudio kept it or dropped it, and
+    none stays on an old ID that a new device might be given;
+  - starts preferBuiltInMic's keeper anew, which ends picks and switches back a headset's
+    microphone that is the default (section 10);
+  - logs `Sound: coreaudiod restarted: listening again to <n> properties of <m> devices` at
+    notice level.
+
+  The rest of what ZenithBar keeps about devices is keyed by UID or Bluetooth address: the
+  switch's mutes, the keeper, the AirPods' models. The panel's rows and a slider's drag hold IDs
+  only until the read after the restart redraws them.
+- **Left out:** a second signal, as the device list changing wholesale. The header documents
+  `ServiceRestarted` for this, and the device list's listener already re-read the state on
+  2026-10-07. If a restart passes without the log line while the IDs change, take a read in
+  which none of the last state's device IDs remains as a restart.
+- **Untested live:** coreaudiod was not restarted to test this, as its crash cut Steve's audio on
+  2026-10-07. Whether `ServiceRestarted` reaches a block listener on macOS 27 is unconfirmed;
+  ControlCenter's AVAudioSession logged `handleServiceRestart` at 20:50:46, 0.7 s after that
+  restart. A reboot tests nothing, as coreaudiod starts before ZenithBar. To confirm, the next
+  time coreaudiod restarts on its own, as when an audio driver's installer restarts it: compare
+  `ps -o lstart= -p $(pgrep -x coreaudiod)` with `log show --predicate 'subsystem ==
+  "io.github.st-eez.zenithbar" AND eventMessage BEGINSWITH "Sound: coreaudiod"'`, then press F11
+  or F12 with the sound panel open and see its slider follow. `zenithbar-probe sound restart
+  86400` in a terminal logs the next restart on its own.
+
+## 12. AirPods listening modes: not possible
 
 Steve asked for the native Sound menu's Listening Mode (Off, Transparency, Adaptive, Noise
 Cancellation) and Conversation Awareness; on 2026-10-07 he chose to stop after a probe found no
@@ -296,14 +382,16 @@ way a third-party app can change them on macOS 27. Don't retry these:
 - What remains: the mode, read-only, from bluetoothd's log lines (`LsnM`, `LsMC`), or pressing
   Control Center's own menu through Accessibility. Steve declined both.
 
-## 12. Untested
+## 13. Untested
 
-On 2026-10-07, with the Mac in use, only the probe's mute of the idle MacBook Pro Microphone
-and Steve's own clicks changed a real device (section 3). Untested: that every app hears
-silence from a muted microphone; whether macOS moves the alert sound device with the default
-output; the knob's behaviour at a drag's release; scrolling on the items; the panel
-following a change Steve makes while it is open, beyond the listener path the probe's writes
-showed. AirPods were not connected: their symbol, the system_profiler match, connecting and
-leaving while the bar runs and while the panel is open, switching to another Apple device, and
-the call profile adding an input stream to their output device, which the unit tests cover as
-states (`Tests/ZenithBarCoreTests/SoundTests.swift`); and headphones in the jack.
+On 2026-10-07, with the Mac in use, only the probe's mute of the idle MacBook Pro Microphone,
+Steve's own clicks and preferBuiltInMic's switches changed a real device (sections 3 and 10).
+Untested: that every app hears silence from a muted microphone; whether macOS moves the alert
+sound device with the default output; the knob's behaviour at a drag's release; scrolling on the
+items; the panel following a change Steve makes while it is open, beyond the listener path the
+probe's writes showed. AirPods were not connected while the panel was built: their symbol, the
+system_profiler match, connecting and leaving while the bar runs and while the panel is open,
+switching to another Apple device, and the call profile adding an input stream to their output
+device, which the unit tests cover as states (`Tests/ZenithBarCoreTests/SoundTests.swift`); and
+headphones in the jack. preferBuiltInMic's rule of 2026-10-08 (section 10) and ZenithBar's
+answer to coreaudiod restarting (section 11) are untested live.

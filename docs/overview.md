@@ -255,6 +255,7 @@ the rest follow from where they are registered.
 | The primary interface and services | `SCDynamicStore` run loop source on the main run loop | main | |
 | Wi-Fi power, link and link quality | `CWEventDelegate` | CoreWLAN's `com.apple.wifi.xpcclient.event.<UUID>` queue | seen |
 | Audio devices, defaults, volumes, mutes, running | `AudioObjectAddPropertyListenerBlock` on the main queue | main | |
+| coreaudiod restarting, `kAudioHardwarePropertyServiceRestarted` ([sound.md](sound.md), section 11) | `AudioObjectAddPropertyListenerBlock` on the main queue | main | untested live |
 | Bluetooth's state | `CBCentralManager`, queue `.main` | main | seen |
 | A Bluetooth device connecting | IOBluetooth's connect notification | `com.apple.bluetooth.iobluetooth.coordinatorQueue` | seen, and in the crash report |
 | A Bluetooth device disconnecting, a connection the panel opened completing | IOBluetooth | unknown, taken as any | |

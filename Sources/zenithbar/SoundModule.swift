@@ -33,8 +33,7 @@ import ZenithBarKit
 
     func start(_ host: ModuleHost) {
         self.host = host
-        sound = Sound { host.changed(true) }
-        sound.preferBuiltInMic = preferBuiltInMic
+        sound = Sound(preferBuiltInMic: preferBuiltInMic) { host.changed(true) }
     }
 
     func configure(_ config: Config) {

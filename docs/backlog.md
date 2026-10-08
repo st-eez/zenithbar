@@ -32,9 +32,16 @@
   whether the AirPods' output device lists under INPUT during a call, and whether it keeps
   counting as a microphone in use after the call, which `IsRunningSomewhere` would show as live
   while only music plays (sound.md, section 2's ceiling).
-  Check `preferBuiltInMic` ([sound.md](sound.md), section 10): on connecting, the default input
-  goes back to the MacBook Pro Microphone with the output left on the AirPods, the log names
-  the switch, and the AirPods' microphone picked in the panel stays.
+  Check `preferBuiltInMic` ([sound.md](sound.md), section 10): on connecting, back in the ear,
+  and back from the iPhone, the default input goes back to the MacBook Pro Microphone with the
+  output left on the AirPods and the log names the switch; the AirPods' microphone picked in the
+  panel or in System Settings' Input list stays. Pick the AirPods as the output in Control
+  Center and record whether macOS moves the input too, which ZenithBar would switch back.
+- Confirm ZenithBar's answer to coreaudiod restarting ([sound.md](sound.md), section 11) the
+  next time coreaudiod restarts on its own, never by restarting it: the log line
+  `Sound: coreaudiod restarted`, the sound panel following F11 and F12 after, and no listener
+  left twice. If no line comes while coreaudiod's start time changes, `ServiceRestarted` does
+  not reach a block listener: add the fallback the section names.
 - Try the Bluetooth panel with Steve at the Mac ([bluetooth.md](bluetooth.md), untested): allow
   ZenithBar's Bluetooth prompt on the panel's first open and check the log for the events
   starting; connect and disconnect the AirPods and the Beats from the panel, and the MX Master or

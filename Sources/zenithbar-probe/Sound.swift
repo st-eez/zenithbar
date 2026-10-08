@@ -24,6 +24,10 @@
 //       (`kAudioDevicePropertyDeviceIsRunningSomewhere` 0), as the MacBook Pro Microphone: its
 //       input mute alone, the same way. Prints coreaudiod's settings files' modification times
 //       before and after, to see when it saves. Refuses any other device.
+//   zenithbar-probe sound restart [seconds]
+//       Listens to `kAudioHardwarePropertyServiceRestarted` on the system object alone and prints
+//       each time it fires, with the device IDs before and after, to see coreaudiod restart on
+//       its own, as at login. Restarts nothing. Default: 10 s.
 import AppKit
 import AudioToolbox
 import CoreAudio
@@ -39,6 +43,9 @@ import Foundation
         return
     case "cost":
         soundCost(seconds: arguments.dropFirst().first.flatMap(Double.init) ?? 60)
+        return
+    case "restart":
+        soundRestart(seconds: arguments.dropFirst().first.flatMap(Double.init) ?? 10)
         return
     case "write":
         guard arguments.count > 1 else { usage() }
@@ -336,6 +343,24 @@ private func bluetooth() {
     listenAll { line in print("\(stamp(start)) \(line)") }
     print("\(stamp(start)) listening to \(listeners.count) properties for \(Int(seconds)) s")
     pumpEvents(seconds)
+    exit(0)
+}
+
+@MainActor private func soundRestart(seconds: Double) {
+    let start = ContinuousClock.now
+    var a = address(kAudioHardwarePropertyServiceRestarted)
+    var ids = devices()
+    let block: AudioObjectPropertyListenerBlock = { _, _ in
+        MainActor.assumeIsolated {
+            let now = devices()
+            print("\(stamp(start)) coreaudiod restarted: devices \(ids) -> \(now)")
+            ids = now
+        }
+    }
+    print("has the property: \(AudioObjectHasProperty(system, &a)), devices \(ids)")
+    print("\(stamp(start)) add: status \(AudioObjectAddPropertyListenerBlock(system, &a, .main, block)), listening \(Int(seconds)) s")
+    pumpEvents(seconds)
+    print("\(stamp(start)) remove: status \(AudioObjectRemovePropertyListenerBlock(system, &a, .main, block))")
     exit(0)
 }
 

@@ -26,7 +26,7 @@ let commands: [(name: String, usage: String, run: @MainActor ([String]) -> Void)
     ("popups", "popups [seconds]", { popups(seconds: $0.first.flatMap(Double.init) ?? 120) }),
     ("tray", "tray list|capture [runs] | tray watch [seconds] [own] | tray press <bundle id>", { tray($0) }),
     ("network", "network read [runs] | network watch|cost [seconds] | network launchd <arguments> | network wifi | network stats [seconds] [spawn] | network speedtest", { network($0) }),
-    ("sound", "sound read [runs] | sound watch|cost [seconds] | sound write <virtual or idle input device name>", { sound($0) }),
+    ("sound", "sound read [runs] | sound watch|cost|restart [seconds] | sound write <virtual or idle input device name>", { sound($0) }),
     ("bluetooth", "bluetooth read [runs] | bluetooth watch|cost [seconds] | bluetooth noop", { bluetooth($0) }),
 ]
 

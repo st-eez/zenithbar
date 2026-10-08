@@ -18,11 +18,32 @@ import ZenithBarKit
     private var lookedUp: Set<String> = []
     private var muteSwitch = MuteSwitch()
     private var keeper = MicKeeper()
-    /// config.json's `preferBuiltInMic`.
-    var preferBuiltInMic = true
-    private lazy var listener: AudioObjectPropertyListenerBlock = { @Sendable [weak self] _, _ in onMain { self?.readSoon() } }
+    /// What the keeper's first check follows, for the log: launch, a coreaudiod restart, or the
+    /// setting turning on, each of which starts a new keeper.
+    private var keeperStart = "at launch"
+    /// coreaudiod restarted, and the next read listens to everything again.
+    private var restarted = false
+    /// config.json's `preferBuiltInMic`. Turning it on acts on a headset microphone that is the
+    /// default already, as at launch.
+    var preferBuiltInMic: Bool {
+        didSet {
+            guard preferBuiltInMic, !oldValue else { return }
+            keeper = MicKeeper()
+            keeperStart = "when PREFER MACBOOK MIC turned on"
+            read()
+        }
+    }
+    private lazy var listener: AudioObjectPropertyListenerBlock = { @Sendable [weak self] count, addresses in
+        let restart = UnsafeBufferPointer(start: addresses, count: Int(count))
+            .contains { $0.mSelector == kAudioHardwarePropertyServiceRestarted }
+        onMain {
+            if restart { self?.restarted = true }
+            self?.readSoon()
+        }
+    }
 
-    init(changed: @escaping @MainActor () -> Void) {
+    init(preferBuiltInMic: Bool, changed: @escaping @MainActor () -> Void) {
+        self.preferBuiltInMic = preferBuiltInMic
         self.changed = changed
         read()
     }
@@ -45,29 +66,55 @@ import ZenithBarKit
     func read() {
         let next = Self.readState()
         let wanted = soundWatches(next)
-        for watch in watches.subtracting(wanted) {
+        // After coreaudiod restarts, every listener is dropped and added again: Apple's header
+        // says a client must add its listeners again, the old device IDs are gone, and dropping
+        // first leaves none twice whether CoreAudio kept it or not (docs/sound.md, coreaudiod).
+        let drop = restarted ? watches : watches.subtracting(wanted)
+        let add = restarted ? wanted : wanted.subtracting(watches)
+        if restarted {
+            restarted = false
+            keeper = MicKeeper()
+            keeperStart = "after coreaudiod restarted"
+            log.notice("Sound: coreaudiod restarted: listening again to \(wanted.count) properties of \(next.devices.count) devices")
+        }
+        for watch in drop {
             var address = AudioObjectPropertyAddress(mSelector: watch.selector, mScope: watch.scope,
                                                      mElement: kAudioObjectPropertyElementMain)
             // A device that went answers with an error, its listeners already gone with it.
             AudioObjectRemovePropertyListenerBlock(watch.object, &address, .main, listener)
         }
-        for watch in wanted.subtracting(watches) {
+        for watch in add {
             var address = AudioObjectPropertyAddress(mSelector: watch.selector, mScope: watch.scope,
                                                      mElement: kAudioObjectPropertyElementMain)
-            if AudioObjectHasProperty(watch.object, &address) {
+            // The system object reads as lacking ServiceRestarted on macOS 27, yet adding its
+            // listener returns no error (zenithbar-probe sound restart, docs/sound.md, coreaudiod).
+            if AudioObjectHasProperty(watch.object, &address) || watch.selector == kAudioHardwarePropertyServiceRestarted {
                 AudioObjectAddPropertyListenerBlock(watch.object, &address, .main, listener)
             }
         }
         watches = wanted
         lookUpBluetooth(next)
-        // Checked on every read, so turning the setting on later acts on no old connection.
-        // Its write comes back through the listener as a default that is not Bluetooth.
-        if let builtIn = keeper.check(next), preferBuiltInMic, let input = next.defaultDevice(.input) {
-            setDefault(builtIn.id, .input, because: "preferBuiltInMic, as \(input.name) became the default input")
-        }
+        if preferBuiltInMic { keep(next) }
         guard next != state else { return }
         state = next
         changed()
+    }
+
+    /// preferBuiltInMic (`MicKeeper`): the switch comes back through the listener as a default
+    /// that is not Bluetooth, so no write echoes.
+    private func keep(_ next: SoundState) {
+        switch keeper.check(next, now: ProcessInfo.processInfo.systemUptime) {
+        case let .switchBack(builtIn, headset, first)?:
+            let why = first ? "\(headset.name) was the default input \(keeperStart)"
+                : "macOS moved the default output and input to \(headset.name)"
+            setDefault(builtIn.id, .input, because: "preferBuiltInMic, as \(why)")
+        case let .leave(headset, fighting)?:
+            let why = fighting
+                ? "macOS made it the default input again after \(MicKeeper.fightLimit) switches in \(Int(MicKeeper.fightWindow)) s"
+                : "it became the default input with no output moving to it, as a pick in System Settings does"
+            log.notice("Sound: preferBuiltInMic leaves \(self.describe(headset.id), privacy: .public) until it disconnects, as \(why, privacy: .public)")
+        case nil: break
+        }
     }
 
     func bluetooth(for device: AudioDevice) -> BluetoothDevice? {
@@ -126,7 +173,7 @@ import ZenithBarKit
     }
 
     /// A panel row's click: makes the device the default, and a Bluetooth microphone picked
-    /// there stays the default input until it disconnects (`MicKeeper`).
+    /// there stays the default input until it disconnects or another is picked (`MicKeeper`).
     func choose(_ device: AudioObjectID, _ direction: AudioDirection) {
         if direction == .input, let uid = state.devices.first(where: { $0.id == device })?.uid { keeper.chose(uid) }
         setDefault(device, direction, because: "panel \(direction) row")
