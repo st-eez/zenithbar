@@ -38,3 +38,9 @@
   `Sources/zenithbar/BluetoothModule.swift`, `Sources/ZenithBarCore/Bluetooth.swift`,
   `Resources/Info.plist`, `Sources/zenithbar-probe/Bluetooth.swift`.
 - [backlog.md](backlog.md): open work, most urgent first.
+
+## Credits
+
+- ZenithBar's mark, the Spartan helmet first on the bar's left (`Sources/zenithbar/Logo.swift`),
+  is "Spartan helmet" by Delapouite, from https://game-icons.net, under CC BY 3.0
+  (https://creativecommons.org/licenses/by/3.0/), with its background square removed.

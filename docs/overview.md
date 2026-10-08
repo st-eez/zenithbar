@@ -159,8 +159,10 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   is built from the same views and the slider it adds ([sound.md](sound.md)), and the Bluetooth
   panel from the same views ([bluetooth.md](bluetooth.md)). NSPopover and NSMenu were left out, as the theme cannot color
   their material.
-- **The left run:** Apple's logo (U+F8FF in the system font, which only Apple's fonts draw;
-  a click does nothing yet), then the workspaces, then the front app. A named workspace after
+- **The left run:** ZenithBar's mark, a Spartan helmet in profile with its crest
+  (`Logo.swift`, game-icons.net's "Spartan helmet" by Delapouite, CC BY 3.0, credited in
+  README.md; Steve's choice on 2026-10-08 over Apple's logo, which it replaced; a click does
+  nothing yet), then the workspaces, then the front app. A named workspace after
   numbered ones, as Steve's `agent`, sits past a thin dim line (U+2502), so it does not read as
   one of them, and config.json's `workspaceIcons` can give it a glyph in place of its name, as
   `{"agent": "\U000F06A9"}`, Material's robot, a number's width (Steve, 2026-10-08). Focus

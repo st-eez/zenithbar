@@ -25,6 +25,7 @@ import ZenithBarKit
     /// The page each plugin item's panel shows.
     private var pages: [String: Int] = [:]
     private var pluginImages = DrawingCache<Item?>()
+    private var logoImages = DrawingCache<Item?>()
     private lazy var popup = Popup(selected: { [weak self] page in self?.select(page: page) },
                                    exited: { [weak self] in self?.pointerMayHaveLeft() })
 
@@ -203,7 +204,7 @@ import ZenithBarKit
     private func render() {
         for (id, bar) in bars {
             let scale = NSScreen.screens.first { $0.displayID == id }?.backingScaleFactor ?? 2
-            bar.show(left: leftItems(uuids[id].flatMap { rows[$0] }, display: id), right: rightItems(scale: scale),
+            bar.show(left: leftItems(uuids[id].flatMap { rows[$0] }, display: id, scale: scale), right: rightItems(scale: scale),
                      style: config.style, background: theme.background.cgColor, scale: scale)
         }
         // An item that left its bar, or whose bar went with its display, gets no exit event.
@@ -212,14 +213,18 @@ import ZenithBarKit
 
     // The fonts and sizes of Steve's SketchyBar config.
 
-    /// Apple's logo, then the workspaces, a thin line between the numbered ones and the first
-    /// named one after them, as Steve's `agent`, then the front app.
-    private func leftItems(_ row: WorkspaceRow?, display: CGDirectDisplayID) -> [(key: String, item: Item)] {
+    /// ZenithBar's mark, then the workspaces, a thin line between the numbered ones and the
+    /// first named one after them, as Steve's `agent`, then the front app.
+    private func leftItems(_ row: WorkspaceRow?, display: CGDirectDisplayID, scale: CGFloat) -> [(key: String, item: Item)] {
         guard let row else { return [] }
-        // U+F8FF, which only Apple's fonts draw as the logo.
-        let logo = NSAttributedString(string: "\u{F8FF}", attributes: [.font: NSFont.systemFont(ofSize: 16),
-                                                                       .foregroundColor: theme.foreground.nsColor])
-        var items: [(key: String, item: Item)] = [("apple", Item(content: .text(logo), center: .ink))]
+        var items: [(key: String, item: Item)] = []
+        let color = theme.foreground
+        if let mark = logoImages.drawing("logo", scale: scale, shows: color, draw: {
+            logo(size: 18, color: color.nsColor).flatMap { inkImage($0, scale: scale) }
+                .map { Item(content: .image($0.0, size: $0.1, ink: $0.2)) }
+        }) {
+            items.append(("logo", mark))
+        }
         let firstNamed = row.pills.indices.first { index in
             Int(row.pills[index].name) == nil && row.pills[..<index].contains { Int($0.name) != nil }
         }
