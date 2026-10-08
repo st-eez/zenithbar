@@ -212,22 +212,24 @@ import ZenithBarKit
 
     // The fonts and sizes of Steve's SketchyBar config.
 
+    /// Apple's logo, then the workspaces, a thin line between the numbered ones and the first
+    /// named one after them, as Steve's `agent`, then the front app.
     private func leftItems(_ row: WorkspaceRow?, display: CGDirectDisplayID) -> [(key: String, item: Item)] {
         guard let row else { return [] }
-        var items = row.pills.map { pill -> (key: String, item: Item) in
-            let key = "space." + pill.name
-            let color = switch pill.emphasis {
-            case .focused, .shown: theme.selected
-            case .hidden: hovered?.key == key && hovered?.display == display ? theme.foreground : theme.dim
+        // U+F8FF, which only Apple's fonts draw as the logo.
+        let logo = NSAttributedString(string: "\u{F8FF}", attributes: [.font: NSFont.systemFont(ofSize: 16),
+                                                                       .foregroundColor: theme.foreground.nsColor])
+        var items: [(key: String, item: Item)] = [("apple", Item(content: .text(logo), center: .ink))]
+        let firstNamed = row.pills.indices.first { index in
+            Int(row.pills[index].name) == nil && row.pills[..<index].contains { Int($0.name) != nil }
+        }
+        for (index, pill) in row.pills.enumerated() {
+            if index == firstNamed {
+                let line = NSAttributedString(string: "\u{2502}", attributes: [.font: barFont(12),
+                                                                              .foregroundColor: theme.dim.nsColor])
+                items.append(("divider", Item(content: .text(line), center: .ink)))
             }
-            var text = NSAttributedString(
-                string: pill.name, attributes: [.font: barFont(14, bold: pill.emphasis == .focused), .foregroundColor: color.nsColor])
-            if !pill.glyphs.isEmpty {
-                text = joined(text, NSAttributedString(string: pill.glyphs, attributes: [
-                    .font: NSFont(name: "sketchybar-app-font", size: 14) ?? barFont(14), .foregroundColor: color.nsColor,
-                ]), gap: 8, centered: true)
-            }
-            return (key, Item(content: .text(text)))
+            items.append(pillItem(pill, display: display))
         }
         if let app = row.frontApp {
             // Short enough that the name, last on the left, rarely meets the right run or the notch.
@@ -236,6 +238,28 @@ import ZenithBarKit
             items.append(("front", Item(content: .text(text))))
         }
         return items
+    }
+
+    /// A workspace's name, or its icon from config.json's `workspaceIcons`, then its windows' app
+    /// glyphs, in its emphasis's color.
+    private func pillItem(_ pill: Pill, display: CGDirectDisplayID) -> (key: String, item: Item) {
+        let key = "space." + pill.name
+        let color = switch pill.emphasis {
+        case .focused, .shown: theme.selected
+        case .hidden: hovered?.key == key && hovered?.display == display ? theme.foreground : theme.dim
+        }
+        var text = if let icon = config.workspaceIcons[pill.name] {
+            NSAttributedString(string: icon, attributes: [.font: barFont(14), .foregroundColor: color.nsColor])
+        } else {
+            NSAttributedString(string: pill.name, attributes: [.font: barFont(14, bold: pill.emphasis == .focused),
+                                                               .foregroundColor: color.nsColor])
+        }
+        if !pill.glyphs.isEmpty {
+            text = joined(text, NSAttributedString(string: pill.glyphs, attributes: [
+                .font: NSFont(name: "sketchybar-app-font", size: 14) ?? barFont(14), .foregroundColor: color.nsColor,
+            ]), gap: 8, centered: true)
+        }
+        return (key, Item(content: .text(text)))
     }
 
     /// The modules' items, then the plugins'.

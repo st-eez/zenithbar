@@ -67,6 +67,9 @@ public struct Config: Decodable, Equatable, Sendable {
     /// Makes the MacBook's microphone the default input again when a Bluetooth headset that
     /// just connected takes it (docs/sound.md, preferBuiltInMic).
     public var preferBuiltInMic = true
+    /// A glyph that stands for a named workspace in place of its name, as Steve's `agent`
+    /// shows a robot, so it is a number's width (docs/overview.md, workspaces).
+    public var workspaceIcons: [String: String] = [:]
 
     /// A command ZenithBar runs every `interval` seconds, and early on a wake or a right click
     /// on its item, reading the items it prints (docs/plugins.md).
@@ -85,13 +88,14 @@ public struct Config: Decodable, Equatable, Sendable {
         self = config
     }
 
-    private enum CodingKeys: String, CodingKey { case style, plugins, preferBuiltInMic }
+    private enum CodingKeys: String, CodingKey { case style, plugins, preferBuiltInMic, workspaceIcons }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         style = try container.decodeIfPresent(BarStyle.self, forKey: .style) ?? .standard
         plugins = try container.decodeIfPresent([Plugin].self, forKey: .plugins) ?? []
         preferBuiltInMic = try container.decodeIfPresent(Bool.self, forKey: .preferBuiltInMic) ?? true
+        workspaceIcons = try container.decodeIfPresent([String: String].self, forKey: .workspaceIcons) ?? [:]
     }
 }
 

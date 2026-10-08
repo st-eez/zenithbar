@@ -80,7 +80,10 @@ func joined(_ first: NSAttributedString, _ second: NSAttributedString, gap: CGFl
     guard first.length > 0 else { return second }
     let after = first.size().width - inkBounds(first).maxX
     let text = NSMutableAttributedString(attributedString: first)
-    text.addAttribute(.kern, value: gap - after - inkBounds(second).minX, range: NSRange(location: text.length - 1, length: 1))
+    // Over the whole last character: on half of a surrogate pair, as a Nerd Font glyph past
+    // U+FFFF is, the kern split it and each half drew as a box.
+    let last = (text.string as NSString).rangeOfComposedCharacterSequence(at: text.length - 1)
+    text.addAttribute(.kern, value: gap - after - inkBounds(second).minX, range: last)
     let tail = NSMutableAttributedString(attributedString: second)
     if centered, let font = first.firstFont {
         tail.addAttribute(.baselineOffset, value: font.capHeight / 2 - inkBounds(second).midY,

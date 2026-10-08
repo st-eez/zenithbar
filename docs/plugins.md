@@ -9,8 +9,9 @@ item in Steve's dotfiles, `zenithbar/.config/zenithbar/plugins/agents`, is the f
   least 1, or ZenithBar keeps the config it read last, as for any config it cannot read.
   ZenithBar knows a plugin by its command, so a change to the list keeps the runs going on,
   and a plugin taken out takes its items off the bar and closes their panel. The file's other
-  keys are `style` ([overview.md](overview.md), styles) and `preferBuiltInMic`
-  ([sound.md](sound.md), section 10).
+  keys are `style` ([overview.md](overview.md), styles), `preferBuiltInMic`
+  ([sound.md](sound.md), section 10) and `workspaceIcons` ([overview.md](overview.md), the
+  left run).
 - **Runs:** ZenithBar runs each plugin at launch, every `interval` seconds, after a wake and
   on a right click on its item, setting `ZENITHBAR_EVENT` to `launch`, `interval`, `wake` or
   `refresh`. A run asked for while one goes is dropped, since that run reports, and a run

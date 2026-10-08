@@ -159,6 +159,14 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   is built from the same views and the slider it adds ([sound.md](sound.md)), and the Bluetooth
   panel from the same views ([bluetooth.md](bluetooth.md)). NSPopover and NSMenu were left out, as the theme cannot color
   their material.
+- **The left run:** Apple's logo (U+F8FF in the system font, which only Apple's fonts draw;
+  a click does nothing yet), then the workspaces, then the front app. A named workspace after
+  numbered ones, as Steve's `agent`, sits past a thin dim line (U+2502), so it does not read as
+  one of them, and config.json's `workspaceIcons` can give it a glyph in place of its name, as
+  `{"agent": "\U000F06A9"}`, Material's robot, a number's width (Steve, 2026-10-08). Focus
+  still shows by color alone, which a color or background on the agent workspace would have
+  hidden. A glyph past U+FFFF is a surrogate pair in a string, so `joined` kerns its whole
+  last character: on its second half the pair split and drew as two boxes.
 - **Look:** the fonts, sizes, paddings and colors of Steve's SketchyBar config of
   2026-10-06, and its app glyph map, copied into `AppIcons.swift`. Colors come from
   `~/.config/zenithbar/theme.json` (`Theme`), Tokyo Night without it. Steve's dotfiles theme
