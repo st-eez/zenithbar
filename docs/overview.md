@@ -262,7 +262,58 @@ the rest follow from where they are registered.
 | Location Services' answer | `CLLocationManagerDelegate`, the manager made on the main thread | main | seen |
 | system_profiler, Wi-Fi scans and actions, samples, the speed test | ZenithBar's own queues | those queues | seen |
 
-## 5. Open questions
+## 5. Background work
+
+With every panel closed and nothing changing, ZenithBar runs the clock's timer and the
+plugins' intervals and otherwise waits for macOS's events. Everything that runs, by what
+starts it; costs are release builds on Steve's M3 Pro.
+
+| What | Started by | Work | Cost |
+|---|---|---|---|
+| Clock (`CalendarModule`) | a one-shot timer at each minute's start | redraws the calendar | one item's update, about 0.7 ms (section 2) |
+| Plugin intervals (`Plugins`) | a repeating timer per plugin, the agents' every 900 s | runs the plugin | the agents: about 50 ms of Python's CPU and 5 s on ssh ([plugins.md](plugins.md)) |
+| A plugin's 2 minute stop | each run | stops a run still going | none |
+| `LaunchGuard`'s 30 s | a launch by launchd, once | clears the count | none |
+| Kosmos's snapshots | Kosmos's pushes on the Mach port | decodes, redraws when the workspaces changed | unmeasured |
+| The network's store | SystemConfiguration's notifications | reads the services and interface kinds | about 2.3 ms ([network.md](network.md), section 1) |
+| Wi-Fi power and link | CoreWLAN's events | reads the power and RSSI | 4.2 to 4.7 ms held on airportd |
+| Wi-Fi link quality | CoreWLAN, at most every 5 s while the RSSI changes: 4 in 60 s on 2026-10-08 | reads the power and RSSI only while Wi-Fi routes | as above, none while another interface routes |
+| The battery | IOKit's power source notifications | reads the power sources | unmeasured |
+| Sound | CoreAudio's listeners on the defaults, the default output's level, and every input's level and running | reads every device once a burst | 1.4 to 2.2 ms ([sound.md](sound.md), section 1) |
+| Bluetooth's state, a device connecting or going | CoreBluetooth and IOBluetooth, once allowed | `system_profiler SPBluetoothDataType -json` now and 2 s later | 143 ms, 41 ms of the child's CPU, a read ([bluetooth.md](bluetooth.md), events) |
+| AirPods' model | a Bluetooth audio device CoreAudio lists for the first time this run | one `system_profiler` read | as above |
+| Settings | `~/.config/zenithbar`, `config.json` or `theme.json` changing | reads both, redraws | unmeasured |
+| Screens, wake | AppKit's notifications | places the bars; after a wake every module reads again, Kosmos is asked for its state and every plugin runs | a wake: one Bluetooth read, the plugins' runs |
+| A launch | launchd | everything reads once; Bluetooth three times, as CoreBluetooth's first state reads now and 2 s later | three `system_profiler` reads |
+
+Only while a panel shows, each stopped when it closes, as `Popup` calls the module's
+`panelClosed` on every close: the network panel's samples every 1.5 s and its caption every 2.8
+s, 6.7 to 7.2 ms a second open ([network.md](network.md), the panel's cost), a Wi-Fi scan as it
+opens, and the Bluetooth panel's caption every 2.8 s and a `system_profiler` read as it opens.
+A scan still going when the panel closes ends without reading the Wi-Fi again.
+
+After a click, once: `networkQuality --json` for the speed test, about 23 s, which runs to its
+end if the panel closes, so its result shows at the next open; `networksetup` for Forget; the
+copy button's checkmark for 1 s; Location Services' settings 2 s after Allow; the Bluetooth
+switch going back after 10 s and a waiting row after 20 s if nothing changes; and the panel's
+close 50 ms after the pointer leaves it.
+
+Measured on 2026-10-08 with `proc_pid_rusage` and ZenithBar's children listed every 5 ms
+(`proc_listchildpids`), panels closed, the Mac in use, Ethernet routing with Wi-Fi joined:
+
+- Before (a554c0d): 1.51 ms of CPU a second over 300 s with no child, and 1.15 ms over 900 s,
+  in which `system_profiler` ran twice for Find My's quarter hour notification
+  ([bluetooth.md](bluetooth.md), events) and the agents plugin once on its interval. A 30 s
+  `sample` of the main thread found it busy only reading the RSSI on link quality events.
+- After (f4e2c24): 0.86 ms a second over the first 1080 s from launch, with the plugin and
+  three `system_profiler` reads at launch, then only the agents plugin at 900 s; Find My's
+  notification at 16:45 ran nothing. Then 0.27 ms a second over 300 s with no child, and a
+  60 s `sample` of the main thread found only the clock's minute.
+
+The CPU figures move with what Steve does, as Kosmos pushes each workspace change; the
+children are the check: with nothing changing, only the plugins' intervals start one.
+
+## 6. Open questions
 
 - What WindowServer spends on an update of one panel, and whether keeping items from moving
   cuts it, which needs a quieter WindowServer than Steve's three displays in use give, or a

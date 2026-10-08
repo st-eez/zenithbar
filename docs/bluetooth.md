@@ -152,9 +152,10 @@ connected.
 Installed, release build, panel closed, Bluetooth not yet allowed and so with no Bluetooth
 listener: ZenithBar spent 100 ms of CPU in 120 s, 0.83 ms a second, with everything it runs, at
 48 MB resident, while Discord's microphone test kept the sound listeners busy; sound.md's 0.33
-ms a second was read with nothing recording. Bluetooth's share while closed is the launch's one
-system_profiler read, about 41 ms of the child's CPU, and once allowed the listeners, which cost
-nothing measurable (section 3). Each open of the panel adds one read, about 41 ms of CPU off the
+ms a second was read with nothing recording. Bluetooth's share while closed is the launch's
+system_profiler reads, about 41 ms of the child's CPU each, and once allowed the listeners, which
+cost nothing measurable (section 3). Allowed, with nothing connected, a launch read three times
+on 2026-10-08: its own read, CoreBluetooth's first state, and that state's read 2 s later. Each open of the panel adds one read, about 41 ms of CPU off the
 main thread, and the phrases' timer, a caption redraw every 2.8 s. The open panel's own cost
 was not measured installed, as opening it needs a click and release builds have no test hook.
 

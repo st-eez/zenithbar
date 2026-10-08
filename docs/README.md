@@ -2,7 +2,8 @@
 
 - [overview.md](overview.md): the goal, what SketchyBar, Noctalia and Omarchy do, what the
   probes measured, the bar's design, its modules, how a crash loop ends, the thread each
-  callback arrives on, and the open questions.
+  callback arrives on, everything that runs in the background with what starts it and its
+  cost, and the open questions.
   Code: `Sources/zenithbar/`, `Sources/ZenithBarCore/`, `Sources/ZenithBarKit/`,
   `Sources/CZenithBar/`, `Sources/zenithbar-probe/`, `script/install.sh`.
 - [plugins.md](plugins.md): plugins, the commands that show items and panels, their output
