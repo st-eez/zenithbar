@@ -31,7 +31,7 @@ private let profile = Data("""
     #expect(state.available.map(\.name) == ["AULA F75Max-1", "Xbox Wireless Controller"])
     let pods = try #require(state.connected.last)
     #expect(pods == BluetoothDevice(address: "7C:1A:2B:3C:4D:03", name: "steez AirPods ANC", connected: true, vendorID: 0x004C,
-                                    productID: 0x201B, minorType: "Headphones", battery: 94))
+                                    productID: 0x201B, minorType: "Headphones", battery: 94, caseBattery: 21))
     // A device not connected keeps no battery, as system_profiler's levels for it are the last it heard.
     #expect(state.available.first?.battery == nil)
     #expect(state.connected.first?.battery == nil)
@@ -81,7 +81,7 @@ private let profile = Data("""
     ]
     #expect(unsettled(pending, in: state) == ["DB:1A:2B:3C:4D:06": .disconnecting, "AC:1A:2B:3C:4D:04": .connecting])
     let pods = state.connected.last!
-    #expect(bluetoothStatus(pods, pending: nil) == "94%")
+    #expect(bluetoothStatus(pods, pending: nil) == "94% · Case 21%")
     #expect(bluetoothStatus(pods, pending: .disconnecting) == "Disconnecting…")
     #expect(bluetoothStatus(state.available[0], pending: .connecting) == "Connecting…")
     #expect(bluetoothStatus(state.available[0], pending: nil) == "")

@@ -17,9 +17,11 @@ public struct BluetoothDevice: Equatable, Sendable {
     /// The lowest percent of its batteries but a case, as an AirPod's; nil while not connected,
     /// as system_profiler keeps the last levels it heard.
     public var battery: Int?
+    /// Its charging case's percent, as AirPods report it while connected; nil otherwise.
+    public var caseBattery: Int?
 
     public init(address: String = "", name: String = "", connected: Bool = false, vendorID: Int? = nil,
-                productID: Int? = nil, minorType: String? = nil, battery: Int? = nil) {
+                productID: Int? = nil, minorType: String? = nil, battery: Int? = nil, caseBattery: Int? = nil) {
         self.address = address
         self.name = name
         self.connected = connected
@@ -27,6 +29,7 @@ public struct BluetoothDevice: Equatable, Sendable {
         self.productID = productID
         self.minorType = minorType
         self.battery = battery
+        self.caseBattery = caseBattery
     }
 }
 
@@ -109,10 +112,13 @@ private func parse(_ json: Data) -> BluetoothState? {
                     guard key.hasPrefix("device_batteryLevel"), key != "device_batteryLevelCase" else { return nil }
                     return (value as? String).flatMap { Int($0.trimmingCharacters(in: CharacterSet(charactersIn: "% "))) }
                 }
+                let caseLevel = (info["device_batteryLevelCase"] as? String)
+                    .flatMap { Int($0.trimmingCharacters(in: CharacterSet(charactersIn: "% "))) }
                 state.devices.append(BluetoothDevice(address: address.uppercased(), name: name, connected: connected,
                                                      vendorID: hex(info["device_vendorID"]), productID: hex(info["device_productID"]),
                                                      minorType: info["device_minorType"] as? String,
-                                                     battery: connected ? levels.min() : nil))
+                                                     battery: connected ? levels.min() : nil,
+                                                     caseBattery: connected ? caseLevel : nil))
             }
         }
     }
@@ -171,12 +177,14 @@ public func unsettled(_ pending: [String: BluetoothAction], in state: BluetoothS
 }
 
 /// The line under a device's name, as Omarchy's `statusText`: the action it waits for, else a
-/// connected device's battery, else nothing.
+/// connected device's battery, and its case's after it, as System Settings shows AirPods'
+/// ("100% · Case 6%"), else nothing.
 public func bluetoothStatus(_ device: BluetoothDevice, pending: BluetoothAction?) -> String {
     switch pending {
-    case .connecting: "Connecting…"
-    case .disconnecting: "Disconnecting…"
-    case nil: device.battery.map { "\($0)%" } ?? ""
+    case .connecting: return "Connecting…"
+    case .disconnecting: return "Disconnecting…"
+    case nil: return [device.battery.map { "\($0)%" }, device.caseBattery.map { "Case \($0)%" }].compactMap { $0 }
+        .joined(separator: " · ")
     }
 }
 

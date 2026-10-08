@@ -39,7 +39,9 @@ connected.
   `Case` while they are not connected: 100%, 100% and 21%, the last levels it heard. IOBluetooth's
   private `batteryPercentLeft`, `Right` and `Case` read 34, 38 and 41 at the same moment, so both
   keep old levels for a device away. ZenithBar shows a battery only for a connected device, the
-  lowest of its levels other than a case's. No connected device was read; that system_profiler
+  lowest of its levels other than a case's, then the case's, as System Settings does ("100% ·
+  Case 6%"). Connected, on 2026-10-08, the AirPods' own entry (7C:1A:2B:3C:4D:03, `< AACP >`)
+  read left and right 100% and case 6%, as System Settings showed. That system_profiler
   names other devices' levels `device_batteryLevelMain`, as the parser expects of any
   `device_batteryLevel` key, is unconfirmed, as is IORegistry's `BatteryPercent` for Apple's
   HID devices, as Steve has none paired.
