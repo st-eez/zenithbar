@@ -103,6 +103,19 @@ private struct SymbolKey: Hashable {
 /// A few dozen at most: the panels' symbols, in the theme's colors, at each signal level.
 @MainActor private var symbolCache: [SymbolKey: NSImage?] = [:]
 
+/// The Nerd Font glyph `text` in the bar's font at `size`, cropped to its ink at `scale`, as
+/// the Bluetooth and Tailscale panels draw theirs; kept once drawn, as `panelSymbol` is.
+@MainActor func panelGlyph(_ text: String, size: CGFloat, color: RGBA, scale: CGFloat) -> NSImage? {
+    let key = SymbolKey(name: text, value: nil, pointSize: size, color: color, scale: scale)
+    if let image = glyphCache[key] { return image }
+    let image = inkImage(glyph(text, font: panelFont(size), color: color.nsColor), scale: scale).map { NSImage(cgImage: $0.0, size: $0.1) }
+    glyphCache[key] = image
+    return image
+}
+
+/// A dozen at most: the Bluetooth glyphs and the machines' OS logos, in the theme's colors.
+@MainActor private var glyphCache: [SymbolKey: NSImage?] = [:]
+
 /// A control: it shows a hover, takes the first click, and acts when the button comes up
 /// inside it.
 class PanelControl: FlippedView {
@@ -167,10 +180,13 @@ final class PanelButton: PanelControl {
 /// A button that copies a value, and shows a check for a second after.
 final class CopyButton: PanelControl {
     var value: String? { didSet { isHidden = value == nil } }
-    private let button = PanelButton(symbol: "doc.on.doc", pointSize: 10)
+    /// Called with the value once copied, as for a caption that says so.
+    var copied: ((String) -> Void)?
+    private let button: PanelButton
 
-    override init(frame: NSRect) {
-        super.init(frame: frame)
+    init(pointSize: CGFloat = 10) {
+        button = PanelButton(symbol: "doc.on.doc", pointSize: pointSize)
+        super.init(frame: .zero)
         button.autoresizingMask = [.width, .height]
         addSubview(button)
         button.action = { [weak self] in self?.copy() }
@@ -189,6 +205,7 @@ final class CopyButton: PanelControl {
         guard let value else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(value, forType: .string)
+        copied?(value)
         button.symbolName = "checkmark"
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
             onMain { self?.button.symbolName = "doc.on.doc" }

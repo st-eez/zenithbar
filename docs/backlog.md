@@ -48,6 +48,14 @@
   AULA keyboard, which are Bluetooth LE and may refuse IOBluetooth's connection; check the item's
   connected glyph follows, the rows' batteries, and how far system_profiler lags the
   notifications; turn Bluetooth off and on from the switch when no keyboard or mouse needs it.
+- Try the Tailscale item and panel with Steve at the Mac ([tailscale.md](tailscale.md),
+  untested), at a time his SSH sessions can drop: right click the item to turn Tailscale off and
+  confirm the mark goes dim and the log reads `Tailscale's tunnel: down`, then on again; the
+  panel's switch both ways; send a file to a machine and check the picker under Kosmos, the
+  front app coming back after it, and the caption's "Sent to"; copy an address.
+- Taildrop receivers on the Linux machines, which Steve deferred on 2026-10-08: each keeps sent
+  files in tailscaled's inbox until `sudo tailscale file get ~/Downloads` runs there
+  ([tailscale.md](tailscale.md), receiving); Omarchy's `omarchy-tailscale-receive` loop is one way.
 - Joining a hidden network by name, and an enterprise network with a user name, from the
   network panel; today a hidden network's row does nothing, and an enterprise network's says
   to join it in System Settings once.
@@ -55,10 +63,10 @@
   off and on, changes networks, sleeps and wakes, and turns on a Tailscale exit node, and
   record what the store and CoreWLAN sent and what the item showed
   ([network.md](network.md), untested).
-- Native tray items ([tray.md](tray.md)): Tailscale from `tailscale status --json`, with a
-  panel to connect, disconnect and pick an exit node; a keep awake item, KeepingYouAwake's
-  state from its `caffeinate` assertion and `keepingyouawake:///toggle`, or ZenithBar's own
-  `IOPMAssertion`.
+- A native keep awake item ([tray.md](tray.md)): KeepingYouAwake's state from its `caffeinate`
+  assertion and `keepingyouawake:///toggle`, or ZenithBar's own `IOPMAssertion`.
+- Picking a Tailscale exit node from the Tailscale panel, which tray.md proposed and the
+  mockup Steve approved on 2026-10-08 left out ([tailscale.md](tailscale.md), the panel).
 - If Steve wants the other apps' glyphs in ZenithBar, a tray mirror ([tray.md](tray.md)):
   capture the active display's MenuBarAgent window once a second, read its slots when the
   capture changes, tint the glyphs and forward clicks with `AXPress`. Needs Screen Recording

@@ -117,20 +117,23 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
 - **The other items:** the clock redraws at each minute's start on a timer set for it,
   the battery on IOKit's power source notifications, the network on SystemConfiguration's
   and CoreWLAN's notifications ([network.md](network.md)), the speaker and the microphone
-  on CoreAudio's listeners ([sound.md](sound.md)), and Bluetooth on CoreBluetooth's state and
-  IOBluetooth's connections once Bluetooth is allowed ([bluetooth.md](bluetooth.md)). From the
-  right end the order is the calendar, the battery, the network, Bluetooth, the speaker and the
-  microphone, the native menu bar's order with the network in Wi-Fi's place and Bluetooth where
-  Omarchy puts it, then the plugins' items. A click on the network opens its panel, on
-  Bluetooth opens the Bluetooth panel, on the speaker opens the sound panel, and on the front
-  app opens Mission Control; a right click on the speaker mutes it, and a click on the microphone mutes it. The
+  on CoreAudio's listeners ([sound.md](sound.md)), Bluetooth on CoreBluetooth's state and
+  IOBluetooth's connections once Bluetooth is allowed ([bluetooth.md](bluetooth.md)), and
+  Tailscale on SystemConfiguration's notifications for its tunnel ([tailscale.md](tailscale.md)).
+  From the right end the order is the calendar, the battery, the network, Tailscale, Bluetooth,
+  the speaker and the microphone, the native menu bar's order with the network in Wi-Fi's place,
+  Tailscale beside it and Bluetooth where Omarchy puts it, then the plugins' items. A click on
+  the network opens its panel, on Tailscale opens the Tailscale panel, on Bluetooth opens the
+  Bluetooth panel, on the speaker opens the sound panel, and on the front app opens Mission
+  Control; a right click on Tailscale turns it on or off, a right click on the speaker mutes it,
+  and a click on the microphone mutes it. The
   microphone shows only while an app uses an input device or a mute is on. An output without
   a volume or a mute property, as Steve's monitors, whose level is set on the monitor, shows
   the full speaker.
 - **Modules** (`BarModule`, `Sources/zenithbar/Module.swift`): each built-in item of the right
   run comes from a module in a file of its own: `CalendarModule`, `BatteryModule`,
-  `NetworkModule`, `BluetoothModule` and `SoundModule`, which shows the speaker and the
-  microphone. A module gives the keys of its items; its items for a display's scale and the
+  `NetworkModule`, `TailscaleModule`, `BluetoothModule` and `SoundModule`, which shows the
+  speaker and the microphone. A module gives the keys of its items; its items for a display's scale and the
   theme, leaving out one it hides; its clicks and scrolls; its panel's view, with what runs
   while the panel opens, closes and refreshes; what it reads again after a wake; what it takes
   from config.json; and in debug builds its test hooks. `Controller` keeps the modules in one
@@ -138,7 +141,7 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   list, so a new built-in item is a module file and an entry in the list. A module asks for a
   redraw through its `ModuleHost`, saying whether its icon changed, and the controller then
   refreshes the module's panel while it shows. The modules read services that know nothing of
-  the bar: `Sound`, `Network`, `Bluetooth` and `Battery` hold the system's state and call back
+  the bar: `Sound`, `Network`, `Tailscale`, `Bluetooth` and `Battery` hold the system's state and call back
   on each change, and the panels read the same services. The workspaces, the front app and the
   plugins' items stay in `Controller`. Each module keeps its images in a `DrawingCache`, which
   draws an image again only when what it shows changes; keyed by `AnyHashable` values built at
@@ -157,7 +160,8 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   only while a password field is open, without making ZenithBar the front app, and gives it
   back by ordering out and in ([network.md](network.md), the panel's focus). The sound panel
   is built from the same views and the slider it adds ([sound.md](sound.md)), and the Bluetooth
-  panel from the same views ([bluetooth.md](bluetooth.md)). NSPopover and NSMenu were left out, as the theme cannot color
+  and Tailscale panels from the same views ([bluetooth.md](bluetooth.md),
+  [tailscale.md](tailscale.md)). NSPopover and NSMenu were left out, as the theme cannot color
   their material.
 - **The left run:** Apple's logo (U+F8FF in the system font, which only Apple's fonts draw;
   a click does nothing yet), then the workspaces, then the front app. A named workspace after
@@ -253,6 +257,8 @@ the rest follow from where they are registered.
 | Test hooks, debug builds only | `DistributedNotificationCenter`, queue `.main` | main | seen |
 | Power sources | `IOPSNotificationCreateRunLoopSource` on the main run loop | main | |
 | The primary interface and services | `SCDynamicStore` run loop source on the main run loop | main | |
+| Tailscale's service and its tunnel's address | a second `SCDynamicStore` on the main run loop | main | |
+| Tailscale's CLI exiting | ZenithBar's read on a global queue, then `onMain` | main | |
 | Wi-Fi power, link and link quality | `CWEventDelegate` | CoreWLAN's `com.apple.wifi.xpcclient.event.<UUID>` queue | seen |
 | Audio devices, defaults, volumes, mutes, running | `AudioObjectAddPropertyListenerBlock` on the main queue | main | |
 | coreaudiod restarting, `kAudioHardwarePropertyServiceRestarted` ([sound.md](sound.md), section 11) | `AudioObjectAddPropertyListenerBlock` on the main queue | main | untested live |
@@ -276,6 +282,7 @@ starts it; costs are release builds on Steve's M3 Pro.
 | `LaunchGuard`'s 30 s | a launch by launchd, once | clears the count | none |
 | Kosmos's snapshots | Kosmos's pushes on the Mach port | decodes, redraws when the workspaces changed | unmeasured |
 | The network's store | SystemConfiguration's notifications | reads the services and interface kinds | about 2.3 ms ([network.md](network.md), section 1) |
+| Tailscale's store | the same notifications, in a session of its own | reads Tailscale's service and its tunnel's address | 0.29 ms ([tailscale.md](tailscale.md), section 1) |
 | Wi-Fi power and link | CoreWLAN's events | reads the power and RSSI | 4.2 to 4.7 ms held on airportd |
 | Wi-Fi link quality | CoreWLAN, at most every 5 s while the RSSI changes: 4 in 60 s on 2026-10-08 | reads the power and RSSI only while Wi-Fi routes | as above, none while another interface routes |
 | The battery | IOKit's power source notifications | reads the power sources | unmeasured |
@@ -289,14 +296,19 @@ starts it; costs are release builds on Steve's M3 Pro.
 Only while a panel shows, each stopped when it closes, as `Popup` calls the module's
 `panelClosed` on every close: the network panel's samples every 1.5 s and its caption every 2.8
 s, 6.7 to 7.2 ms a second open ([network.md](network.md), the panel's cost), a Wi-Fi scan as it
-opens, and the Bluetooth panel's caption every 2.8 s and a `system_profiler` read as it opens.
+opens, the Bluetooth panel's caption every 2.8 s and a `system_profiler` read as it opens, and the
+Tailscale panel's caption every 2.8 s and a `tailscale status --json` read as it opens, about
+82 ms ([tailscale.md](tailscale.md), cost).
 A scan still going when the panel closes ends without reading the Wi-Fi again.
 
 After a click, once: `networkQuality --json` for the speed test, about 23 s, which runs to its
 end if the panel closes, so its result shows at the next open; `networksetup` for Forget; the
 copy button's checkmark for 1 s; Location Services' settings 2 s after Allow; the Bluetooth
-switch going back after 10 s and a waiting row after 20 s if nothing changes; and the panel's
-close 50 ms after the pointer leaves it.
+switch going back after 10 s and a waiting row after 20 s if nothing changes; `tailscale up` or
+`down`, stopped after 30 s, and the Tailscale switch going back after 10 s; the Tailscale
+panel's refresh, a status read after its switch turns Tailscale on, and its caption's news for
+3 s; `tailscale file cp` for a send, which runs to its end; and the panel's close 50 ms after the
+pointer leaves it.
 
 Measured on 2026-10-08 with `proc_pid_rusage` and ZenithBar's children listed every 5 ms
 (`proc_listchildpids`), panels closed, the Mac in use, Ethernet routing with Wi-Fi joined:

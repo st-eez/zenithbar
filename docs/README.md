@@ -38,4 +38,10 @@
   Code: `Sources/zenithbar/Bluetooth.swift`, `Sources/zenithbar/BluetoothPanel.swift`,
   `Sources/zenithbar/BluetoothModule.swift`, `Sources/ZenithBarCore/Bluetooth.swift`,
   `Resources/Info.plist`, `Sources/zenithbar-probe/Bluetooth.swift`.
+- [tailscale.md](tailscale.md): the Tailscale item and panel, what SystemConfiguration's store
+  and Tailscale's CLI give on macOS 27, turning Tailscale on and off, sending files with
+  Taildrop, the Linux machines not collecting them, the cost, and what stays untested.
+  Code: `Sources/zenithbar/Tailscale.swift`, `Sources/zenithbar/TailscalePanel.swift`,
+  `Sources/zenithbar/TailscaleModule.swift`, `Sources/ZenithBarCore/Tailscale.swift`,
+  `Sources/zenithbar/PanelKit.swift`.
 - [backlog.md](backlog.md): open work, most urgent first.

@@ -69,12 +69,14 @@ struct ModuleHost {
 }
 
 /// What the popup does for a panel: takes and gives back the keyboard for a password field,
-/// places the panel again when its height changes, and closes it once the pointer is off it.
+/// places the panel again when its height changes, closes it once the pointer is off it, and
+/// closes it at once, as before a file picker it would cover.
 struct PanelHost {
     let takeKeyboard: @MainActor (NSView) -> Void
     let giveKeyboardBack: @MainActor () -> Void
     let resized: @MainActor () -> Void
     let pointerMayHaveLeft: @MainActor () -> Void
+    let close: @MainActor () -> Void
 }
 
 /// A symbol's or a glyph's name and color, what its item shows.

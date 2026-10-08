@@ -66,7 +66,6 @@ import ZenithBarKit
             section.list.theme = theme
             section.listed = []
         }
-        glyphs = [:]
         update()
     }
 
@@ -116,7 +115,7 @@ import ZenithBarKit
 
         // Header, as the network panel's.
         let iconState = state.icon ?? .off
-        icon.image = glyphImage(iconState.glyph, size: 28, color: iconState == .off ? theme.dim : theme.foreground, scale: scale)
+        icon.image = panelGlyph(iconState.glyph, size: 28, color: iconState == .off ? theme.dim : theme.foreground, scale: scale)
         icon.frame = NSRect(x: pad, y: y + 4, width: 32, height: 32)
         power.isHidden = state.powered == nil
         power.isOn = asked ?? state.powered ?? false
@@ -177,7 +176,7 @@ import ZenithBarKit
             let device = row.device
             let color = device.connected ? theme.foreground : theme.dim
             let image = bluetoothSymbol(device).flatMap { panelSymbol($0, pointSize: 13, color: color, scale: scale) }
-                ?? glyphImage(BluetoothIcon.on.glyph, size: 15, color: color, scale: scale)
+                ?? panelGlyph(BluetoothIcon.on.glyph, size: 15, color: color, scale: scale)
             let view = DeviceRow(device.name, status: bluetoothStatus(device, pending: row.pending), image: image,
                                  current: device.connected, theme: theme, width: width)
             view.isEnabled = row.pending == nil && !row.waiting
@@ -187,18 +186,6 @@ import ZenithBarKit
             return (view, DeviceRow.height)
         }
         section.listHeight = section.list.set(views, width: width)
-    }
-
-    /// The glyphs drawn so far, as cropping one to its ink scans every pixel.
-    private var glyphs: [String: NSImage] = [:]
-
-    /// A Nerd Font glyph cropped to its ink, as the network panel draws its Ethernet glyph.
-    private func glyphImage(_ text: String, size: CGFloat, color: RGBA, scale: CGFloat) -> NSImage? {
-        let key = "\(text) \(size) \(color) \(scale)"
-        if let image = glyphs[key] { return image }
-        let image = inkImage(glyph(text, font: panelFont(size), color: color.nsColor), scale: scale).map { NSImage(cgImage: $0.0, size: $0.1) }
-        glyphs[key] = image
-        return image
     }
 }
 

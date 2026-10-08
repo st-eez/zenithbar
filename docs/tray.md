@@ -195,4 +195,5 @@ second, read the slots when the capture changes, tint the glyphs, and forward cl
 `AXPress` ([backlog.md](backlog.md)).
 
 Steve chose native items over the mirror on 2026-10-07. Wi-Fi came first, built as a network
-item that shows Ethernet too ([network.md](network.md)).
+item that shows Ethernet too ([network.md](network.md)), then Tailscale on 2026-10-08, its mark
+following its tunnel in SystemConfiguration's store ([tailscale.md](tailscale.md)).

@@ -13,10 +13,12 @@ import ZenithBarKit
     private var theme = Theme.fallback
     private var config = Config()
     private var settingsWatches: [DispatchSourceFileSystemObject] = []
-    /// From the bar's right end inward: the calendar, the battery, the network, Bluetooth, the
-    /// speaker and the microphone, the native menu bar's order with the network in Wi-Fi's place
-    /// and Bluetooth where Omarchy places it, left of the network. The plugins' items follow.
-    private let modules: [BarModule] = [CalendarModule(), BatteryModule(), NetworkModule(), BluetoothModule(), SoundModule()]
+    /// From the bar's right end inward: the calendar, the battery, the network, Tailscale,
+    /// Bluetooth, the speaker and the microphone, the native menu bar's order with the network in
+    /// Wi-Fi's place, Tailscale beside it and Bluetooth where Omarchy places it, left of the
+    /// network. The plugins' items follow.
+    private let modules: [BarModule] = [CalendarModule(), BatteryModule(), NetworkModule(), TailscaleModule(),
+                                        BluetoothModule(), SoundModule()]
     private var hovered: (key: String, display: CGDirectDisplayID)?
     private lazy var kosmos = KosmosLink { [weak self] state in onMain { self?.received(state) } }
     private lazy var plugins = Plugins { [weak self] item in self?.received(item) }
@@ -38,7 +40,8 @@ import ZenithBarKit
         let panelHost = PanelHost(takeKeyboard: { [weak self] field in self?.popup.takeKeyboard(for: field) },
                                   giveKeyboardBack: { [weak self] in self?.popup.giveKeyboardBack() },
                                   resized: { [weak self] in self?.popup.fit() },
-                                  pointerMayHaveLeft: { [weak self] in self?.pointerMayHaveLeft() })
+                                  pointerMayHaveLeft: { [weak self] in self?.pointerMayHaveLeft() },
+                                  close: { [weak self] in self?.popup.close() })
         for module in modules {
             module.start(ModuleHost(changed: { [weak self, unowned module] icon in self?.changed(module, icon: icon) },
                                     panel: panelHost, setConfig: { [weak self] key, value in self?.setConfig(key, value) }))
