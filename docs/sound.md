@@ -276,7 +276,27 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
 - **Untested:** no Bluetooth headset connected while this was built; the unit tests cover the
   states (`keepsTheBuiltInMicrophoneWhenAirPodsConnect`).
 
-## 11. Untested
+## 11. AirPods listening modes: not possible
+
+Steve asked for the native Sound menu's Listening Mode (Off, Transparency, Adaptive, Noise
+Cancellation) and Conversation Awareness; on 2026-10-07 he chose to stop after a probe found no
+way a third-party app can change them on macOS 27. Don't retry these:
+- `IOBluetoothDevice`'s `listeningMode`/`setListeningMode:`, which NoiseBuddy used, still exist,
+  but the setter only stores a byte in the object and reaches neither bluetoothd nor the
+  AirPods, and the getters read stale values (0, while bluetoothd logged `LsnM Normal`).
+- Control Center's paths, CoreBluetooth's private `CBController` (`modifyDevice:settings:`),
+  AudioAccessoryServices and AVFoundation's private `AVOutputDevice`, need Apple-only
+  entitlements (`com.apple.bluetooth.system`, `com.apple.AudioAccessoryServices`,
+  `com.apple.avfoundation.allows-access-to-device-list`) an Apple Development signature cannot
+  claim.
+- A second AACP channel to the AirPods (PSM 0x1001) with the handshake made them drop
+  macOS's own session for 10 s, and macOS moved the output to the speakers.
+- Reading the Bluetooth audio driver's private CoreAudio properties crashed coreaudiod
+  (`dvsf`, on the AirPods' output device), and macOS moved the output to the speakers.
+- What remains: the mode, read-only, from bluetoothd's log lines (`LsnM`, `LsMC`), or pressing
+  Control Center's own menu through Accessibility. Steve declined both.
+
+## 12. Untested
 
 On 2026-10-07, with the Mac in use, only the probe's mute of the idle MacBook Pro Microphone
 and Steve's own clicks changed a real device (section 3). Untested: that every app hears
