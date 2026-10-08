@@ -120,9 +120,10 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   on CoreAudio's listeners ([sound.md](sound.md)), Bluetooth on CoreBluetooth's state and
   IOBluetooth's connections once Bluetooth is allowed ([bluetooth.md](bluetooth.md)), and
   Tailscale on SystemConfiguration's notifications for its tunnel ([tailscale.md](tailscale.md)).
-  From the right end the order is the calendar, the battery, the network, Tailscale, Bluetooth,
-  the speaker and the microphone, the native menu bar's order with the network in Wi-Fi's place,
-  Tailscale beside it and Bluetooth where Omarchy puts it, then the plugins' items. A click on
+  From the right end the order is the calendar, the battery, the speaker and the microphone, the
+  network, Bluetooth and Tailscale, then the plugins' items: Steve's grouping, with the battery
+  beside the clock as on the native menu bar, the speaker he clicks most next, and the
+  connections in Omarchy's order. A click on
   the network opens its panel, on Tailscale opens the Tailscale panel, on Bluetooth opens the
   Bluetooth panel, on the speaker opens the sound panel, and on the front app opens Mission
   Control; a right click on Tailscale turns it on or off, a right click on the speaker mutes it,

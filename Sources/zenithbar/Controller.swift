@@ -13,12 +13,12 @@ import ZenithBarKit
     private var theme = Theme.fallback
     private var config = Config()
     private var settingsWatches: [DispatchSourceFileSystemObject] = []
-    /// From the bar's right end inward: the calendar, the battery, the network, Tailscale,
-    /// Bluetooth, the speaker and the microphone, the native menu bar's order with the network in
-    /// Wi-Fi's place, Tailscale beside it and Bluetooth where Omarchy places it, left of the
-    /// network. The plugins' items follow.
-    private let modules: [BarModule] = [CalendarModule(), BatteryModule(), NetworkModule(), TailscaleModule(),
-                                        BluetoothModule(), SoundModule()]
+    /// From the bar's right end inward, in groups, Steve's order: the battery beside the calendar,
+    /// as on the native menu bar; then the speaker, the most clicked, with the microphone beside
+    /// it; then the connections, the network, Bluetooth and Tailscale, in Omarchy's order. The
+    /// plugins' items follow.
+    private let modules: [BarModule] = [CalendarModule(), BatteryModule(), SoundModule(), NetworkModule(),
+                                        BluetoothModule(), TailscaleModule()]
     private var hovered: (key: String, display: CGDirectDisplayID)?
     private lazy var kosmos = KosmosLink { [weak self] state in onMain { self?.received(state) } }
     private lazy var plugins = Plugins { [weak self] item in self?.received(item) }
