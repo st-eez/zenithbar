@@ -59,6 +59,10 @@ import ZenithBarKit
     // main-actor method there trapped at launch with AirPods connected (2026-10-07). So they
     // are nonisolated and enter through `onMain` (docs/overview.md, threads).
     @objc private nonisolated func connected(_ notification: IOBluetoothUserNotification, device: IOBluetoothDevice) {
+        // Every 15 minutes, as Find My's devices change addresses, IOBluetooth calls this for a
+        // device with no address, name or connection, which no row shows; reading on it ran
+        // system_profiler twice each time (docs/bluetooth.md, events).
+        guard device.addressString != nil else { return }
         device.register(forDisconnectNotification: self, selector: #selector(disconnected(_:device:)))
         onMain { self.readTwice() }
     }

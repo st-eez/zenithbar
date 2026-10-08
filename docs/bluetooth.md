@@ -80,6 +80,14 @@ connected.
   IOBluetooth's connections. Each event reads now and again 2 s later, as system_profiler may
   lag the event and AirPods report their batteries after connecting; both unconfirmed, as
   nothing connected. One read runs at a time, off the main thread. Nothing polls.
+- **Find My's quarter hours:** about every 15 minutes, as bluetoothd gives Find My's devices
+  new addresses, it drops the old device record and forces its disconnection for every app
+  with a Bluetooth session, and IOBluetooth calls ZenithBar's connect notification for a
+  device with no address, no name, not connected and not paired (logged on 2026-10-08 at
+  16:30:04; bluetoothd logged the same at :00, :15, :30 and :45 of most hours that day).
+  ZenithBar ran system_profiler twice for each, about 8 times an hour with nothing
+  connecting. A connect notification for a device without an address now reads nothing, as
+  no row is keyed by one.
 - **Before the permission:** without Bluetooth permission ZenithBar starts neither CoreBluetooth
   nor IOBluetooth, so the item follows only launches, wakes and the panel opening. The panel's
   first open starts CoreBluetooth, which makes macOS ask; once allowed, the events start, and
