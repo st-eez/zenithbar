@@ -157,6 +157,9 @@ import ZenithBarKit
             guard let self else { return }
             scanning = false
             if let found { scanned = found }
+            // A scan, up to 7 s, can end after the panel closed; its reads ask airportd and
+            // locationd, so they wait for the next open (docs/network.md, the panel's cost).
+            guard isOpen else { return }
             readWifi()
             update()
         }

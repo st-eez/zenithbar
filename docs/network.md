@@ -125,10 +125,12 @@ costs it 0.5 ms a second more.
 
 - **State** (`Network`, `Sources/zenithbar/Network.swift`): the store's notifications for
   `State:/Network/Global/IPv4` and every service's IPv4 key read the services, their
-  hardware kinds and the primary interface again; CoreWLAN's power, link and link quality
-  events read the Wi-Fi's power and RSSI again, about 3 ms an event, at most one every 5 s.
-  A wake reads both, and an interrupted connection to airportd monitors again. Nothing
-  polls. Installed, ZenithBar spent 150 ms of CPU in 120 s with everything else it runs,
+  hardware kinds and the primary interface again; CoreWLAN's power and link events read the
+  Wi-Fi's power and RSSI again, and its link quality events, at most one every 5 s, read them
+  only while Wi-Fi routes, as only the Wi-Fi icon shows the RSSI. Each read held the main
+  thread 4.2 to 4.7 ms waiting on airportd; on 2026-10-08, with Ethernet routing and Wi-Fi
+  joined, 4 link quality events came in 60 s, each read for nothing until then. A wake reads
+  both, and an interrupted connection to airportd monitors again. Nothing polls. Installed, ZenithBar spent 150 ms of CPU in 120 s with everything else it runs,
   1.25 ms a second, and logged no error.
 - **Icon** (`networkIcon`, `Sources/ZenithBarCore/Network.swift`), solid as the bar's other
   icons (overview.md, icons). On Wi-Fi, the SF Symbol `wifi` as the native menu bar draws
@@ -289,8 +291,10 @@ thread put most of the open panel's time in Core Animation drawing the changed l
 (about 2.8 ms a second) and in the panel's update (about 1 ms); the sampler's queue spends
 about 1 ms a sample. Before the symbols were kept once drawn, the open panel spent 12 ms a
 second, as each update cropped the header's symbol to its ink again. Nothing runs while it
-is closed: the sampler, the phrases and the scan stop, and the figures start fresh at the
-next open. Footprint: 65 MB resident, with every display's bar.
+is closed: the sampler and the phrases stop, a scan still going, which CoreWLAN cannot
+cancel, ends without reading the Wi-Fi again, and the figures start fresh at the next open.
+A speed test Steve started runs to its end, about 23 s, so its result shows at the next
+open. Footprint: 65 MB resident, with every display's bar.
 
 ## 7. Untested
 

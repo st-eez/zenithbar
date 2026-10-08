@@ -93,9 +93,14 @@ import ZenithBarKit
 
     private func received(_ event: WifiEvents.Event) {
         switch event {
-        // A link quality event's own RSSI read 6 to 7 dB above rssiValue() at the same moment,
-        // so the item reads rssiValue() each time to keep one scale (docs/network.md).
         case .changed: readWifi()
+        // A link quality event's own RSSI read 6 to 7 dB above rssiValue() at the same moment,
+        // so the item reads rssiValue() to keep one scale. Only the Wi-Fi icon shows it, and the
+        // read holds the main thread about 4 ms on airportd, so it waits while another interface
+        // routes; the store's switch to Wi-Fi reads it (docs/network.md, events).
+        case .linkQuality:
+            guard primary?.kind == .wifi else { return }
+            readWifi()
         case .interrupted:
             log.error("CoreWLAN's connection to airportd was interrupted; monitoring Wi-Fi again")
             monitorWifi()
@@ -118,8 +123,9 @@ import ZenithBarKit
 /// CoreWLAN's delegate, which it calls on a queue of its own.
 private final class WifiEvents: NSObject, CWEventDelegate, Sendable {
     enum Event: Sendable {
-        /// Power, link or link quality.
+        /// Power or link.
         case changed
+        case linkQuality
         case interrupted
     }
 
@@ -130,7 +136,7 @@ private final class WifiEvents: NSObject, CWEventDelegate, Sendable {
     func powerStateDidChangeForWiFiInterface(withName interfaceName: String) { received(.changed) }
     func linkDidChangeForWiFiInterface(withName interfaceName: String) { received(.changed) }
     func linkQualityDidChangeForWiFiInterface(withName interfaceName: String, rssi: Int, transmitRate: Double) {
-        received(.changed)
+        received(.linkQuality)
     }
     func clientConnectionInterrupted() { received(.interrupted) }
 }
