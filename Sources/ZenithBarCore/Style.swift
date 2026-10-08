@@ -65,8 +65,8 @@ public struct Config: Decodable, Equatable, Sendable {
     public var style: BarStyle = .standard
     public var plugins: [Plugin] = []
     /// Makes the MacBook's microphone the default input again when a Bluetooth headset that
-    /// just connected takes it (docs/sound.md, keepBuiltInMic).
-    public var keepBuiltInMic = true
+    /// just connected takes it (docs/sound.md, preferBuiltInMic).
+    public var preferBuiltInMic = true
 
     /// A command ZenithBar runs every `interval` seconds, and early on a wake or a right click
     /// on its item, reading the items it prints (docs/plugins.md).
@@ -85,13 +85,13 @@ public struct Config: Decodable, Equatable, Sendable {
         self = config
     }
 
-    private enum CodingKeys: String, CodingKey { case style, plugins, keepBuiltInMic }
+    private enum CodingKeys: String, CodingKey { case style, plugins, preferBuiltInMic }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         style = try container.decodeIfPresent(BarStyle.self, forKey: .style) ?? .standard
         plugins = try container.decodeIfPresent([Plugin].self, forKey: .plugins) ?? []
-        keepBuiltInMic = try container.decodeIfPresent(Bool.self, forKey: .keepBuiltInMic) ?? true
+        preferBuiltInMic = try container.decodeIfPresent(Bool.self, forKey: .preferBuiltInMic) ?? true
     }
 }
 
@@ -107,4 +107,22 @@ extension Config.Plugin {
                                                    debugDescription: "a plugin's interval is at least 1 s")
         }
     }
+}
+
+/// `json`, config.json's text, with `key` set to `value`, as the sound panel's switch saves
+/// `preferBuiltInMic`: the key's value replaced where it is, or the key added first in the
+/// object, so the rest of Steve's file keeps its order and spacing. Nil when `json` is not an
+/// object.
+public func settingConfig(_ json: String, key: String, to value: Bool) -> String? {
+    let literal = value ? "true" : "false"
+    let pattern = "(\"\(NSRegularExpression.escapedPattern(for: key))\"\\s*:\\s*)(true|false)"
+    if let regex = try? NSRegularExpression(pattern: pattern),
+       let match = regex.firstMatch(in: json, range: NSRange(json.startIndex..., in: json)),
+       let range = Range(match.range(at: 2), in: json) {
+        return json.replacingCharacters(in: range, with: literal)
+    }
+    guard let brace = json.firstIndex(of: "{") else { return nil }
+    let rest = json[json.index(after: brace)...]
+    let empty = rest.trimmingCharacters(in: .whitespacesAndNewlines) == "}"
+    return String(json[...brace]) + "\n  \"\(key)\": \(literal)" + (empty ? "\n" : ",") + rest
 }

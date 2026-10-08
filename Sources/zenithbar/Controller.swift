@@ -41,7 +41,7 @@ import ZenithBarKit
                                   pointerMayHaveLeft: { [weak self] in self?.pointerMayHaveLeft() })
         for module in modules {
             module.start(ModuleHost(changed: { [weak self, unowned module] icon in self?.changed(module, icon: icon) },
-                                    panel: panelHost))
+                                    panel: panelHost, setConfig: { [weak self] key, value in self?.setConfig(key, value) }))
         }
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil,
                                                queue: .main) { [weak self] _ in onMain { self?.placeBars() } }
@@ -97,6 +97,23 @@ import ZenithBarKit
     #endif
 
     static let settings = URL(fileURLWithPath: NSHomeDirectory() + "/.config/zenithbar")
+
+    /// Writes `key` into config.json, editing its text so the rest keeps its formatting, and
+    /// through its symlink into Steve's dotfiles rather than over the link; the settings watch
+    /// then reads it again. A missing file starts as `{}`.
+    private func setConfig(_ key: String, _ value: Bool) {
+        let file = Self.settings.appending(path: "config.json").resolvingSymlinksInPath()
+        let text = (try? String(contentsOf: file, encoding: .utf8)) ?? "{}\n"
+        guard let next = settingConfig(text, key: key, to: value) else {
+            return log.error("Could not set \(key, privacy: .public) in config.json, which is not a JSON object")
+        }
+        do {
+            try next.write(to: file, atomically: true, encoding: .utf8)
+            log.notice("Set \(key, privacy: .public) to \(value) in config.json")
+        } catch {
+            log.error("Could not write config.json: \(error.localizedDescription, privacy: .public)")
+        }
+    }
 
     /// `config.json` and `theme.json`, each keeping what it had when its file is missing or
     /// unreadable.

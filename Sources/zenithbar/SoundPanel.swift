@@ -21,6 +21,12 @@ import ZenithBarCore
     private let master = PanelSwitch()
     /// Says what the switch mutes, as on its own it read as a mystery (Steve, 2026-10-07).
     private let masterLabel = PanelLabel(size: 9.5, bold: true, alignment: .right)
+    /// The setting that keeps the MacBook's microphone when headphones connect, under INPUT
+    /// (docs/sound.md, preferBuiltInMic).
+    private let preferLabel = PanelLabel(size: 9.5, bold: true)
+    private let preferSwitch = PanelSwitch()
+    /// The switch was flipped to this.
+    var preferChanged: (@MainActor (Bool) -> Void)?
     private let sections: [Section]
     private let dividers = [PanelDivider(), PanelDivider()]
 
@@ -51,7 +57,7 @@ import ZenithBarCore
         self.sound = sound
         sections = [Section(.output), Section(.input)]
         super.init(frame: NSRect(x: 0, y: 0, width: Self.width, height: 100))
-        for view in [icon, title, caption, master, masterLabel] + dividers as [NSView] { addSubview(view) }
+        for view in [icon, title, caption, master, masterLabel, preferLabel, preferSwitch] + dividers as [NSView] { addSubview(view) }
         for section in sections {
             for view in [section.caption, section.percent, section.slider, section.list] as [NSView] { addSubview(view) }
             section.slider.moved = { [weak self, unowned section] value in self?.moved(section, to: value) }
@@ -60,6 +66,11 @@ import ZenithBarCore
             }
         }
         master.action = { [weak self] in self?.sound.toggleAll() }
+        preferSwitch.action = { [weak self] in
+            guard let self else { return }
+            self.preferChanged?(!self.sound.preferBuiltInMic)
+            self.update()
+        }
         restyle()
     }
 
@@ -69,6 +80,7 @@ import ZenithBarCore
 
     private func restyle() {
         master.theme = theme
+        preferSwitch.theme = theme
         for divider in dividers { divider.theme = theme }
         for section in sections {
             section.slider.theme = theme
@@ -133,6 +145,18 @@ import ZenithBarCore
             divider.frame = NSRect(x: pad, y: y, width: width - 2 * pad, height: 9)
             y += 9 + 8
             y = layout(section, state: state, y: y, width: width, scale: scale)
+        }
+        // Under INPUT, while there is one.
+        let inputShows = !sections[1].list.isHidden
+        preferLabel.isHidden = !inputShows
+        preferSwitch.isHidden = !inputShows
+        if inputShows {
+            preferLabel.set("PREFER MACBOOK MIC", color: theme.dim.nsColor, kern: 1.2)
+            preferSwitch.isOn = sound.preferBuiltInMic
+            preferSwitch.frame = NSRect(x: width - pad - 36, y: y + 2, width: 36, height: 24)
+            preferLabel.frame = NSRect(x: pad, y: preferSwitch.frame.midY - preferLabel.lineHeight / 2,
+                                       width: preferSwitch.frame.minX - 8 - pad, height: preferLabel.lineHeight)
+            y += 28
         }
         y += pad - 6
         if frame.height != y {

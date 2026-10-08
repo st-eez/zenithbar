@@ -68,7 +68,7 @@ none hidden:
 - A write elsewhere comes back through the listeners as any change does: the installed bar
   re-read its state after each of the probe's writes to Teams Audio, three reads for the four
   writes, as it reads once for a burst. ZenithBar writes nothing in answer to a listener but
-  `keepBuiltInMic`'s default input (section 10), whose own change reads back as a default that
+  `preferBuiltInMic`'s default input (section 10), whose own change reads back as a default that
   is not Bluetooth, so no write echoes.
 - **Logs:** ZenithBar logs each write at notice level, which the unified log keeps: the
   control clicked, the device's name, ID and UID, the direction, and the value read before and
@@ -247,7 +247,7 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
   `mic live|muted|off|real`, which draws the microphone item that way without an app or a mute,
   for captures.
 
-## 10. keepBuiltInMic
+## 10. preferBuiltInMic
 
 - **Why:** when AirPods or another Bluetooth headset connect, macOS makes them the default
   output and input. An app opening their microphone drops them into the call profile, whose
@@ -257,15 +257,19 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
   built-in microphone the default input again, and leaves the default output on the headset.
   The built-in microphone is the built-in input with the UID `BuiltInMicrophoneDevice` or the
   data source `imic`, as on Steve's M3 Pro; on a Mac without one ZenithBar does nothing. Each
-  switch is logged at notice level, as `keepBuiltInMic, as <headset> became the default input`.
+  switch is logged at notice level, as `preferBuiltInMic, as <headset> became the default input`.
 - **Choices stand:** a Bluetooth microphone Steve picks in the panel's INPUT stays the default
   until it disconnects. So does one he picks in System Settings or Control Center after
   ZenithBar's switch, and one connected before ZenithBar started. **Ceiling:** a headset that
   connected without macOS making it the default, then picked in System Settings or Control
   Center, is switched back once; picking it in the panel avoids that. The upgrade path is to
   act only within a few seconds of the headset connecting.
-- **Setting:** `"keepBuiltInMic": false` in `~/.config/zenithbar/config.json` turns it off; it is
-  on when the key is missing. ZenithBar reads the change at once.
+- **Setting:** the panel's PREFER MACBOOK MIC switch, under INPUT, or `"preferBuiltInMic":
+  false` in `~/.config/zenithbar/config.json`; it is on when the key is missing, and ZenithBar
+  reads a change at once. "Prefer", Steve's word (2026-10-07), as a microphone he picks stays.
+  The switch writes the key into config.json's text (`settingConfig`), first in the object or
+  in place, so the rest of the file keeps its formatting, and through the symlink into the
+  dotfiles, where the change then shows as uncommitted. Named `keepBuiltInMic` until then.
 - **Apps with their own microphone setting,** as Discord, Zoom and Microsoft Teams, use the
   device chosen there and ignore the default: set them to "MacBook Pro Microphone" or to
   "Default" for this to keep the headset out of the call profile.

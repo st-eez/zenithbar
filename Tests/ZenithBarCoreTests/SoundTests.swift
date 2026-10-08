@@ -240,8 +240,8 @@ private func sides(_ toggle: (mute: Bool, sides: [MuteSide])) -> [String] {
     #expect(mini.check(noMic) == nil)
     #expect(mini.check(SoundState(devices: [speakers, airpods, airpodsInput], defaultOutput: 120, defaultInput: 121)) == nil)
     #expect(steve.builtInMic?.id == 89)
-    #expect(Config().keepBuiltInMic)
-    #expect(Config(json: Data(#"{"keepBuiltInMic":false}"#.utf8))?.keepBuiltInMic == false)
+    #expect(Config().preferBuiltInMic)
+    #expect(Config(json: Data(#"{"preferBuiltInMic":false}"#.utf8))?.preferBuiltInMic == false)
 }
 
 @Test func symbolsByDevice() {

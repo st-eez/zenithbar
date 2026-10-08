@@ -201,3 +201,26 @@ import Testing
     #expect(Config(json: Data(#"{"plugins":[{"command":["a"],"interval":0}]}"#.utf8)) == nil)
     #expect(Config(json: Data(#"{"plugins":[{"command":["a"],"interval":-5}]}"#.utf8)) == nil)
 }
+
+@Test func settingConfigKeepsTheFile() {
+    let steve = """
+        {
+          "style": "standard",
+          "plugins": [
+            { "command": ["~/.config/zenithbar/plugins/agents"], "interval": 900 }
+          ]
+        }
+
+        """
+    // Added first, the rest untouched.
+    let added = settingConfig(steve, key: "preferBuiltInMic", to: false)
+    #expect(added == steve.replacingOccurrences(of: "{\n  \"style\"", with: "{\n  \"preferBuiltInMic\": false,\n  \"style\""))
+    #expect(Config(json: Data(added!.utf8))?.preferBuiltInMic == false)
+    // Replaced where it is.
+    let flipped = settingConfig(added!, key: "preferBuiltInMic", to: true)
+    #expect(flipped == added!.replacingOccurrences(of: "false", with: "true"))
+    #expect(Config(json: Data(flipped!.utf8))?.preferBuiltInMic == true)
+    #expect(settingConfig("{}", key: "preferBuiltInMic", to: false) == "{\n  \"preferBuiltInMic\": false\n}")
+    #expect(Config(json: Data(settingConfig("{}", key: "preferBuiltInMic", to: false)!.utf8))?.preferBuiltInMic == false)
+    #expect(settingConfig("nope", key: "preferBuiltInMic", to: true) == nil)
+}

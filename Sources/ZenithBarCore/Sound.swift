@@ -223,7 +223,7 @@ public struct MuteSwitch: Sendable {
 
 /// Keeps the built-in microphone the default input when a Bluetooth headset connects, as macOS
 /// makes the headset's microphone the default and opening it drops the headset into the call
-/// profile, at 24 kHz (docs/sound.md, keepBuiltInMic).
+/// profile, at 24 kHz (docs/sound.md, preferBuiltInMic).
 public struct MicKeeper: Sendable {
     /// The input devices of the last state, nil before the first, by UID.
     private var known: Set<String>?

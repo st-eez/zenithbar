@@ -32,7 +32,7 @@
   whether the AirPods' output device lists under INPUT during a call, and whether it keeps
   counting as a microphone in use after the call, which `IsRunningSomewhere` would show as live
   while only music plays (sound.md, section 2's ceiling).
-  Check `keepBuiltInMic` ([sound.md](sound.md), section 10): on connecting, the default input
+  Check `preferBuiltInMic` ([sound.md](sound.md), section 10): on connecting, the default input
   goes back to the MacBook Pro Microphone with the output left on the AirPods, the log names
   the switch, and the AirPods' microphone picked in the panel stays.
 - Try the Bluetooth panel with Steve at the Mac ([bluetooth.md](bluetooth.md), untested): allow

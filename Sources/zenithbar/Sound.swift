@@ -18,8 +18,8 @@ import ZenithBarKit
     private var lookedUp: Set<String> = []
     private var muteSwitch = MuteSwitch()
     private var keeper = MicKeeper()
-    /// config.json's `keepBuiltInMic`.
-    var keepBuiltInMic = true
+    /// config.json's `preferBuiltInMic`.
+    var preferBuiltInMic = true
     private lazy var listener: AudioObjectPropertyListenerBlock = { @Sendable [weak self] _, _ in onMain { self?.readSoon() } }
 
     init(changed: @escaping @MainActor () -> Void) {
@@ -62,8 +62,8 @@ import ZenithBarKit
         lookUpBluetooth(next)
         // Checked on every read, so turning the setting on later acts on no old connection.
         // Its write comes back through the listener as a default that is not Bluetooth.
-        if let builtIn = keeper.check(next), keepBuiltInMic, let input = next.defaultDevice(.input) {
-            setDefault(builtIn.id, .input, because: "keepBuiltInMic, as \(input.name) became the default input")
+        if let builtIn = keeper.check(next), preferBuiltInMic, let input = next.defaultDevice(.input) {
+            setDefault(builtIn.id, .input, because: "preferBuiltInMic, as \(input.name) became the default input")
         }
         guard next != state else { return }
         state = next

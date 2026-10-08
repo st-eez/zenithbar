@@ -10,14 +10,20 @@ import ZenithBarKit
     let keys = ["volume", "mic"]
     private var sound: Sound!
     private var host: ModuleHost!
-    /// config.json's `keepBuiltInMic`, which may be read before `start`.
-    private var keepBuiltInMic = true
+    /// config.json's `preferBuiltInMic`, which may be read before `start`.
+    private var preferBuiltInMic = true
     /// Scroll steps carried between events, for the speaker and the microphone.
     private var scrolls: [String: ScrollSteps] = [:]
     private var images = DrawingCache<Item?>()
     private lazy var panel: SoundPanel = {
         let panel = SoundPanel(sound: sound)
         panel.resized = host.panel.resized
+        panel.preferChanged = { [weak self] prefer in
+            // Shown at once; config.json's reading follows through `configure`.
+            self?.preferBuiltInMic = prefer
+            self?.sound.preferBuiltInMic = prefer
+            self?.host.setConfig("preferBuiltInMic", prefer)
+        }
         return panel
     }()
     #if DEBUG
@@ -28,12 +34,13 @@ import ZenithBarKit
     func start(_ host: ModuleHost) {
         self.host = host
         sound = Sound { host.changed(true) }
-        sound.keepBuiltInMic = keepBuiltInMic
+        sound.preferBuiltInMic = preferBuiltInMic
     }
 
     func configure(_ config: Config) {
-        keepBuiltInMic = config.keepBuiltInMic
-        sound?.keepBuiltInMic = keepBuiltInMic
+        preferBuiltInMic = config.preferBuiltInMic
+        sound?.preferBuiltInMic = preferBuiltInMic
+        if sound != nil { panel.update() }
     }
 
     func wake() { sound.read() }

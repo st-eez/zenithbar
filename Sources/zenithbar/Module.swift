@@ -63,6 +63,9 @@ struct ModuleHost {
     /// shows either way.
     let changed: @MainActor (_ icon: Bool) -> Void
     let panel: PanelHost
+    /// Saves `key` as `value` in config.json, which is then read again and handed to every
+    /// module's `configure`, as a panel's switch for a setting does.
+    let setConfig: @MainActor (_ key: String, _ value: Bool) -> Void
 }
 
 /// What the popup does for a panel: takes and gives back the keyboard for a password field,
