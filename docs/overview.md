@@ -161,7 +161,7 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   their material.
 - **The left run:** ZenithBar's mark, a Spartan helmet in profile with its crest
   (`Logo.swift`, game-icons.net's "Spartan helmet" by Delapouite, CC BY 3.0, credited in
-  README.md; Steve's choice on 2026-10-08 over Apple's logo, which it replaced; a click does
+  docs/README.md; Steve's choice on 2026-10-08 over Apple's logo, which it replaced; a click does
   nothing yet), then the workspaces, then the front app. A named workspace after
   numbered ones, as Steve's `agent`, sits past a thin dim line (U+2502), so it does not read as
   one of them, and config.json's `workspaceIcons` can give it a glyph in place of its name, as
