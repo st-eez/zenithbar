@@ -424,6 +424,13 @@ public func soundWatches(_ state: SoundState) -> Set<AudioWatch> {
             watches.insert(AudioWatch(output.id, selector, kAudioObjectPropertyScopeOutput))
         }
     }
+    // AirPods gain their output streams after they connect and after their microphone is let go,
+    // with no other property changing, so a device's streams are watched in both directions.
+    for device in state.devices {
+        for scope in [kAudioObjectPropertyScopeOutput, kAudioObjectPropertyScopeInput] {
+            watches.insert(AudioWatch(device.id, kAudioDevicePropertyStreams, scope))
+        }
+    }
     for device in state.devices(.input) {
         watches.insert(AudioWatch(device.id, kAudioDevicePropertyDeviceIsRunningSomewhere))
         for selector in levels { watches.insert(AudioWatch(device.id, selector, kAudioObjectPropertyScopeInput)) }

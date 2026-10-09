@@ -361,8 +361,10 @@ private func switched(_ decision: MicKeeper.Decision?, first: Bool = false) -> B
     #expect(before.contains(AudioWatch(82, volume, kAudioObjectPropertyScopeOutput)))
     #expect(before.contains(AudioWatch(68, kAudioDevicePropertyDeviceIsRunningSomewhere)))
     #expect(before.contains(AudioWatch(89, kAudioDevicePropertyMute, kAudioObjectPropertyScopeInput)))
-    // Only the default output's levels: the monitor's are not listened to.
-    #expect(!before.contains { $0.object == 94 })
+    // Only the default output's levels: the monitor's are not listened to, only its streams,
+    // which every device's are, as AirPods gain theirs after connecting.
+    #expect(!before.contains { $0.object == 94 && $0.selector != kAudioDevicePropertyStreams })
+    #expect(before.contains(AudioWatch(94, kAudioDevicePropertyStreams, kAudioObjectPropertyScopeOutput)))
     // AirPods connect and take the output and a call: their output's levels and their input join,
     // and the speakers' levels go.
     let after = soundWatches(SoundState(devices: steve.devices + [airpods, airpodsMic], defaultOutput: 120, defaultInput: 121))

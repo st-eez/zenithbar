@@ -64,6 +64,9 @@ import ZenithBarKit
     /// Reads every device again, listens to what the new state needs and drops what it no longer
     /// does, as when a device goes or the default changes, and tells the bar when anything changed.
     func read() {
+        // Timed from the read's start: reading a headset that just connected took about 2 s on
+        // 2026-10-09, which pushed its microphone past MicKeeper's window (docs/sound.md, section 10).
+        let readAt = ProcessInfo.processInfo.systemUptime
         let next = Self.readState()
         let wanted = soundWatches(next)
         // After coreaudiod restarts, every listener is dropped and added again: Apple's header
@@ -94,7 +97,7 @@ import ZenithBarKit
         }
         watches = wanted
         lookUpBluetooth(next)
-        if preferBuiltInMic { keep(next) }
+        if preferBuiltInMic { keep(next, at: readAt) }
         guard next != state else { return }
         state = next
         changed()
@@ -102,8 +105,8 @@ import ZenithBarKit
 
     /// preferBuiltInMic (`MicKeeper`): the switch comes back through the listener as a default
     /// that is not Bluetooth, so no write echoes.
-    private func keep(_ next: SoundState) {
-        switch keeper.check(next, now: ProcessInfo.processInfo.systemUptime) {
+    private func keep(_ next: SoundState, at now: TimeInterval) {
+        switch keeper.check(next, now: now) {
         case let .switchBack(builtIn, headset, first)?:
             let why = first ? "\(headset.name) was the default input \(keeperStart)"
                 : "macOS moved the default output and input to \(headset.name)"

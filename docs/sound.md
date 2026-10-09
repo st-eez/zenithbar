@@ -224,8 +224,11 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
   the lists, so he never switches to Microsoft Teams Audio by accident. One that is the default
   still shows, highlighted, so he can see it and switch away (`SoundState.listed`).
 - **Live:** the panel draws `Sound`'s state, which the bar's listeners keep current: the device
-  list and both defaults, the default output's volume, mute and data source, and every input
-  device's running state, mute and level (`soundWatches`). So the open panel follows the volume
+  list and both defaults, the default output's volume, mute and data source, every input
+  device's running state, mute and level, and every device's streams in both directions
+  (`soundWatches`). The streams, as on 2026-10-09 the AirPods gained their output streams after
+  they connected, with nothing else changing, and the panel listed them under INPUT only until
+  the next read. So the open panel follows the volume
   keys, System Settings, Control Center and other apps with nothing polling, and needs no
   listener of its own: nothing starts when it opens or stops when it closes. A change in the
   device list or a default adds the new devices' listeners and drops the gone ones', as when
@@ -269,7 +272,10 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
   after coreaudiod restarted, at 20:52:05, and back in the ear at 21:01:08. So ZenithBar takes a
   headset's microphone becoming the default within 2 s (`routeWindow`) of the default output
   moving to the same headset, matched by the Bluetooth address both UIDs begin with, as macOS's
-  route, and switches it back.
+  route, and switches it back. Each read is timed from its start: on 2026-10-09 reading the
+  AirPods just after they connected took about 2 s (nothing from ZenithBar in its log between
+  19:42:21.5 and 23.3), and timed at its end their microphone, set 1 ms after the output, read
+  as moved 2.2 s later and was left as a pick.
 - **Choices stand:** a headset's microphone picked in the panel's INPUT stays the default until
   the headset leaves CoreAudio's device list, coreaudiod restarts, or Steve picks another input
   in the panel; the AirPods leaving the ear and coming back keep it. A headset's microphone that
