@@ -231,14 +231,6 @@ private func switched(_ decision: MicKeeper.Decision?, first: Bool = false) -> B
     #expect(keeper.check(connected, now: 0) == nil)
     #expect(keeper.check(kept, now: 1) == nil)
     #expect(switched(keeper.check(routed, now: 1.01)))
-    // AirPods that are the default output before their output streams appear, as on 2026-10-09:
-    // still macOS's route.
-    keeper = MicKeeper()
-    var streamless = airpods
-    streamless.output = nil
-    let early = SoundState(devices: steve.devices + [streamless, airpodsInput], defaultOutput: 82, defaultInput: 89)
-    #expect(keeper.check(early, now: 0) == nil)
-    #expect(switched(keeper.check(SoundState(devices: early.devices, defaultOutput: 120, defaultInput: 121), now: 0.5)))
     // Back in the ear without disconnecting, as at 21:01:08: the output leaves and comes back
     // with the input, and the AirPods never leave the device list.
     #expect(keeper.check(connected, now: 30) == nil)
@@ -407,4 +399,30 @@ private func switched(_ decision: MicKeeper.Decision?, first: Bool = false) -> B
     #expect(teamsDefault.listed(.output).map(\.id) == [94, 82, 68])
     #expect(teamsDefault.listed(.input).map(\.id) == [89, 68])
     #expect(AudioTransport(code: kAudioDeviceTransportTypeVirtual) == .virtual)
+}
+
+@Test func preferBuiltInMicWaitsForAnOutputCoreAudioHasNotReadFully() {
+    // AirPods that are the default output before their output streams appear, as on 2026-10-09:
+    // still macOS's route.
+    var keeper = MicKeeper()
+    var streamless = airpods
+    streamless.output = nil
+    let early = SoundState(devices: steve.devices + [streamless, airpodsInput], defaultOutput: 82, defaultInput: 89)
+    #expect(keeper.check(early, now: 0) == nil)
+    #expect(switched(keeper.check(SoundState(devices: early.devices, defaultOutput: 120, defaultInput: 121), now: 0.5)))
+    // Or named the default output before CoreAudio lists them, with their microphone the default:
+    // the decision waits for the list, and the moves date from the IDs' changes, so it is still
+    // macOS's route 3 s later.
+    keeper = MicKeeper()
+    let unlisted = SoundState(devices: steve.devices + [airpodsInput], defaultOutput: 120, defaultInput: 121)
+    #expect(keeper.check(steve, now: 0) == nil)
+    #expect(keeper.check(unlisted, now: 1) == nil)
+    #expect(keeper.check(unlisted, now: 2) == nil)
+    #expect(switched(keeper.check(SoundState(devices: unlisted.devices + [streamless], defaultOutput: 120,
+                                             defaultInput: 121), now: 4)))
+    // An output that never lists within `listWait` leaves the microphone.
+    keeper = MicKeeper()
+    #expect(keeper.check(steve, now: 0) == nil)
+    #expect(keeper.check(unlisted, now: 1) == nil)
+    #expect(keeper.check(unlisted, now: 1 + MicKeeper.listWait) == .leave(headset: airpodsInput, fighting: false))
 }

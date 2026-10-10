@@ -272,11 +272,16 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
   after coreaudiod restarted, at 20:52:05, and back in the ear at 21:01:08. So ZenithBar takes a
   headset's microphone becoming the default within 2 s (`routeWindow`) of the default output
   moving to the same headset, matched by the Bluetooth address both UIDs begin with, as macOS's
-  route, and switches it back. The output is the default output's ID, whatever its streams:
-  on 2026-10-09 the AirPods were the default output before their output streams appeared, and
-  reading the output through `defaultDevice(.output)`, which needs streams, saw no output move,
-  so their microphone was left as a pick (found by review; the AirPods then listed under INPUT
-  only, section 9). Each read is also timed from its start, a guess at the same failure, as
+  route, and switches it back. The output is the default output's ID, whatever its streams,
+  and its move dates from when the ID changed, even if CoreAudio lists the device later: on
+  2026-10-09 coreaudiod set the AirPods as the default output at 19:42:21.852 and logged their
+  output streams only at 23.765, and ZenithBar, reading the output through
+  `defaultDevice(.output)`, which needs streams, saw no output move and left their microphone as
+  a pick at 24.036 (the AirPods then listed under INPUT only, section 9). Whether they were
+  listed without streams or not listed yet is unknown; both are covered. A headset microphone
+  that becomes the default while the default output names a device CoreAudio does not list yet
+  waits up to 10 s (`listWait`) for it, the input dated from when it was first seen, and is
+  left if it never lists. Each read is also timed from its start, a guess at the same failure, as
   ZenithBar logged nothing from 19:42:21.5 to 23.3; whether a read stalled is unmeasured.
 - **Choices stand:** a headset's microphone picked in the panel's INPUT stays the default until
   the headset leaves CoreAudio's device list, coreaudiod restarts, or Steve picks another input
