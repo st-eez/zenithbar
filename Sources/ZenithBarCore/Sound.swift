@@ -267,7 +267,10 @@ public struct MicKeeper: Sendable {
         let listed = Set(state.devices(.input).map(\.uid))
         kept.formIntersection(listed)
         switches = switches.filter { listed.contains($0.key) }
-        let defaultOutput = state.defaultDevice(.output)
+        // By ID alone: AirPods are the default output before their output streams appear, and
+        // `defaultDevice(.output)`, which needs them, read nil there on 2026-10-09, so their
+        // microphone read as a pick (docs/sound.md, section 10).
+        let defaultOutput = state.devices.first { $0.id == state.defaultOutput }
         if let defaultOutput, defaultOutput.uid != output, defaultOutput.transport == .bluetooth {
             outputMoved = (Self.headset(defaultOutput), now)
         }

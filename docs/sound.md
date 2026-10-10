@@ -272,10 +272,12 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
   after coreaudiod restarted, at 20:52:05, and back in the ear at 21:01:08. So ZenithBar takes a
   headset's microphone becoming the default within 2 s (`routeWindow`) of the default output
   moving to the same headset, matched by the Bluetooth address both UIDs begin with, as macOS's
-  route, and switches it back. Each read is timed from its start: on 2026-10-09 reading the
-  AirPods just after they connected took about 2 s (nothing from ZenithBar in its log between
-  19:42:21.5 and 23.3), and timed at its end their microphone, set 1 ms after the output, read
-  as moved 2.2 s later and was left as a pick.
+  route, and switches it back. The output is the default output's ID, whatever its streams:
+  on 2026-10-09 the AirPods were the default output before their output streams appeared, and
+  reading the output through `defaultDevice(.output)`, which needs streams, saw no output move,
+  so their microphone was left as a pick (found by review; the AirPods then listed under INPUT
+  only, section 9). Each read is also timed from its start, a guess at the same failure, as
+  ZenithBar logged nothing from 19:42:21.5 to 23.3; whether a read stalled is unmeasured.
 - **Choices stand:** a headset's microphone picked in the panel's INPUT stays the default until
   the headset leaves CoreAudio's device list, coreaudiod restarts, or Steve picks another input
   in the panel; the AirPods leaving the ear and coming back keep it. A headset's microphone that

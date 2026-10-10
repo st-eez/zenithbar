@@ -231,6 +231,14 @@ private func switched(_ decision: MicKeeper.Decision?, first: Bool = false) -> B
     #expect(keeper.check(connected, now: 0) == nil)
     #expect(keeper.check(kept, now: 1) == nil)
     #expect(switched(keeper.check(routed, now: 1.01)))
+    // AirPods that are the default output before their output streams appear, as on 2026-10-09:
+    // still macOS's route.
+    keeper = MicKeeper()
+    var streamless = airpods
+    streamless.output = nil
+    let early = SoundState(devices: steve.devices + [streamless, airpodsInput], defaultOutput: 82, defaultInput: 89)
+    #expect(keeper.check(early, now: 0) == nil)
+    #expect(switched(keeper.check(SoundState(devices: early.devices, defaultOutput: 120, defaultInput: 121), now: 0.5)))
     // Back in the ear without disconnecting, as at 21:01:08: the output leaves and comes back
     // with the input, and the AirPods never leave the device list.
     #expect(keeper.check(connected, now: 30) == nil)
