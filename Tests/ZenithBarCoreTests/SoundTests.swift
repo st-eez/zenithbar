@@ -420,6 +420,20 @@ private func switched(_ decision: MicKeeper.Decision?, first: Bool = false) -> B
     #expect(keeper.check(unlisted, now: 2) == nil)
     #expect(switched(keeper.check(SoundState(devices: unlisted.devices + [streamless], defaultOutput: 120,
                                              defaultInput: 121), now: 4)))
+    // Or their microphone, the default input with no input streams yet, reads 2.2 s after the
+    // output moved: the input dates from its ID's change, so it is still macOS's route.
+    keeper = MicKeeper()
+    var silentMic = airpodsInput
+    silentMic.input = nil
+    #expect(keeper.check(steve, now: 0) == nil)
+    #expect(keeper.check(SoundState(devices: steve.devices + [streamless, silentMic], defaultOutput: 120,
+                                    defaultInput: 121), now: 0.01) == nil)
+    #expect(switched(keeper.check(routed, now: 2.2)))
+    // A pick in System Settings long after the output moved still stands.
+    #expect(keeper.check(kept, now: 3) == nil)
+    keeper = MicKeeper()
+    #expect(keeper.check(kept, now: 0) == nil)
+    #expect(keeper.check(routed, now: 30) == .leave(headset: airpodsInput, fighting: false))
     // An output that never lists within `listWait` leaves the microphone.
     keeper = MicKeeper()
     #expect(keeper.check(steve, now: 0) == nil)

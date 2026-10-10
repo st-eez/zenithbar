@@ -280,8 +280,9 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
   a pick at 24.036 (the AirPods then listed under INPUT only, section 9). Whether they were
   listed without streams or not listed yet is unknown; both are covered. A headset microphone
   that becomes the default while the default output names a device CoreAudio does not list yet
-  waits up to 10 s (`listWait`) for it, the input dated from when it was first seen, and is
-  left if it never lists. Each read is also timed from its start, a guess at the same failure, as
+  waits up to 10 s (`listWait`) for it, and is left if it never lists. The input is dated the
+  same way, from when the default input's ID changed, as a microphone without input streams
+  yet reads as no default input. Each read is also timed from its start, a guess at the same failure, as
   ZenithBar logged nothing from 19:42:21.5 to 23.3; whether a read stalled is unmeasured.
 - **Choices stand:** a headset's microphone picked in the panel's INPUT stays the default until
   the headset leaves CoreAudio's device list, coreaudiod restarts, or Steve picks another input
