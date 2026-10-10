@@ -249,6 +249,10 @@ import ZenithBarKit
     /// Every device and the defaults, about 1.4 ms for Steve's five devices (docs/sound.md).
     private static func readState() -> SoundState {
         let system = AudioObjectID(kAudioObjectSystemObject)
+        // The defaults first, so `read`'s start dates them even when reading a device that just
+        // connected is slow (MicKeeper).
+        let defaultOutput = value(system, kAudioHardwarePropertyDefaultOutputDevice, AudioObjectID(0))
+        let defaultInput = value(system, kAudioHardwarePropertyDefaultInputDevice, AudioObjectID(0))
         let ids = array(system, kAudioHardwarePropertyDevices, AudioObjectID(0))
         let devices = ids.map { id in
             AudioDevice(id: id, uid: string(id, kAudioDevicePropertyDeviceUID) ?? "",
@@ -257,9 +261,7 @@ import ZenithBarKit
                         running: (value(id, kAudioDevicePropertyDeviceIsRunningSomewhere, UInt32(0)) ?? 0) != 0,
                         output: side(id, .output), input: side(id, .input))
         }
-        return SoundState(devices: devices,
-                          defaultOutput: value(system, kAudioHardwarePropertyDefaultOutputDevice, AudioObjectID(0)),
-                          defaultInput: value(system, kAudioHardwarePropertyDefaultInputDevice, AudioObjectID(0)))
+        return SoundState(devices: devices, defaultOutput: defaultOutput, defaultInput: defaultInput)
     }
 
     /// Nil for a direction without streams.

@@ -290,11 +290,11 @@ public struct MicKeeper: Sendable {
             guard let moved = state.devices.first(where: { $0.id == state.defaultOutput }) else {
                 // Named the default before CoreAudio lists it: decide once it lists, leaving
                 // `input` unrecorded so the next read sees the change again.
-                if now - seen < Self.listWait, abs(seen - movedAt) <= Self.routeWindow { return nil }
+                if now - seen < Self.listWait, (0...Self.routeWindow).contains(seen - movedAt) { return nil }
                 return leave(headset)
             }
             guard moved.transport == .bluetooth, Self.headset(moved) == Self.headset(headset),
-                  abs(seen - movedAt) <= Self.routeWindow else { return leave(headset) }
+                  (0...Self.routeWindow).contains(seen - movedAt) else { return leave(headset) }
         }
         let recent = (switches[headset.uid] ?? []).filter { now - $0 < Self.fightWindow }
         guard recent.count < Self.fightLimit else {

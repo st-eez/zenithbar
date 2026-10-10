@@ -434,6 +434,20 @@ private func switched(_ decision: MicKeeper.Decision?, first: Bool = false) -> B
     keeper = MicKeeper()
     #expect(keeper.check(kept, now: 0) == nil)
     #expect(keeper.check(routed, now: 30) == .leave(headset: airpodsInput, fighting: false))
+    // macOS putting the microphone back after each switch, as a real fight alternates the input's
+    // ID: switched while within 2 s of the output's move, then left as a pick.
+    keeper = MicKeeper()
+    #expect(keeper.check(connected, now: 0) == nil)
+    #expect(switched(keeper.check(routed, now: 1)))
+    #expect(keeper.check(kept, now: 1.2) == nil)
+    #expect(switched(keeper.check(routed, now: 1.5)))
+    #expect(keeper.check(kept, now: 1.7) == nil)
+    #expect(keeper.check(routed, now: 3.5) == .leave(headset: airpodsInput, fighting: false))
+    // macOS moves the output first; an input that moves before it is a pick.
+    keeper = MicKeeper()
+    #expect(keeper.check(steve, now: 0) == nil)
+    #expect(keeper.check(SoundState(devices: connected.devices, defaultOutput: 82, defaultInput: 121), now: 1)
+            == .leave(headset: airpodsInput, fighting: false))
     // An output that never lists within `listWait` leaves the microphone.
     keeper = MicKeeper()
     #expect(keeper.check(steve, now: 0) == nil)

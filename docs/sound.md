@@ -282,7 +282,9 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
   that becomes the default while the default output names a device CoreAudio does not list yet
   waits up to 10 s (`listWait`) for it, and is left if it never lists. The input is dated the
   same way, from when the default input's ID changed, as a microphone without input streams
-  yet reads as no default input. Each read is also timed from its start, a guess at the same failure, as
+  yet reads as no default input. A read takes both defaults before any device, so its start
+  dates them however slowly the devices read. The output must move first, as in every route
+  seen; an input that moves before it reads as a pick. Each read is also timed from its start, a guess at the same failure, as
   ZenithBar logged nothing from 19:42:21.5 to 23.3; whether a read stalled is unmeasured.
 - **Choices stand:** a headset's microphone picked in the panel's INPUT stays the default until
   the headset leaves CoreAudio's device list, coreaudiod restarts, or Steve picks another input
@@ -298,7 +300,8 @@ Read back from CoreAudio's log of the installed bar (pid 61338) at 18:37 and 18:
   - macOS moving only the input to a headset whose output is the default already reads as a pick,
     and the microphone stays until the headset disconnects. None was seen on 2026-10-07;
   - a headset's microphone that is the default at launch, after coreaudiod restarts, or when the
-    setting turns on is switched back, whoever picked it.
+    setting turns on is switched back, whoever picked it; one without input streams then is
+    switched back when they appear, logged as macOS's route.
 
   A pick in the panel always holds. There is no upgrade path through public API: the `transient`
   mark shows only in coreaudiod's log.
