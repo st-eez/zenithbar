@@ -16,6 +16,9 @@ public struct KosmosState: Decodable, Equatable, Sendable {
 
     public struct Window: Decodable, Equatable, Sendable {
         public var app: String
+        /// Hidden with its app, after the windows shown; nil from a Kosmos before it added the
+        /// field.
+        public var hidden: Bool?
     }
 
     public struct Workspace: Decodable, Equatable, Sendable {

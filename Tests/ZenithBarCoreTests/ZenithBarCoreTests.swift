@@ -224,3 +224,15 @@ import Testing
     #expect(Config(json: Data(settingConfig("{}", key: "preferBuiltInMic", to: false)!.utf8))?.preferBuiltInMic == false)
     #expect(settingConfig("nope", key: "preferBuiltInMic", to: true) == nil)
 }
+
+@Test func windowsHiddenWithTheirAppKeepTheirGlyphsApart() throws {
+    let json = """
+        {"version":1,"displays":[{"id":1,"uuid":"B"}],
+         "workspaces":[{"name":"6","display":1,"shown":true,"focused":false,"windows":[
+           {"id":1,"app":"Spotify","x":0,"y":0,"hidden":false},{"id":2,"app":"Ghostty","x":900,"y":0,"hidden":true}]},
+           {"name":"7","display":1,"shown":false,"focused":false,"windows":[{"id":3,"app":"Ghostty","x":0,"y":0,"hidden":true}]}]}
+        """
+    let rows = workspaceRows(try #require(KosmosState.decode(Data(json.utf8))), icons: ["Spotify": ":spotify:", "Ghostty": ":ghostty:"])
+    #expect(rows["B"]?.pills == [Pill(name: "6", glyphs: ":spotify:", hiddenGlyphs: ":ghostty:", emphasis: .shown),
+                                 Pill(name: "7", glyphs: "", hiddenGlyphs: ":ghostty:", emphasis: .hidden)])
+}

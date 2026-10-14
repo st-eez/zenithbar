@@ -12,6 +12,8 @@ public struct Pill: Equatable, Sendable {
     public var name: String
     /// sketchybar-app-font ligatures, one per window, apart by a space.
     public var glyphs: String
+    /// The same for the windows hidden with their app, drawn dimmed after `glyphs`.
+    public var hiddenGlyphs = ""
     public var emphasis: Emphasis
 }
 
@@ -34,9 +36,13 @@ public func workspaceRows(_ state: KosmosState, icons: [String: String]) -> [Str
     for uuid in state.displays.compactMap(\.uuid) { rows[uuid] = WorkspaceRow(pills: [], frontApp: nil) }
     for workspace in state.workspaces {
         guard let uuid = workspace.displayUUID ?? uuids[workspace.display] else { continue }
-        let glyphs = workspace.windows.map { icons[$0.app] ?? icons["Default"] ?? "" }
+        func glyphs(hidden: Bool) -> String {
+            workspace.windows.filter { ($0.hidden ?? false) == hidden }
+                .map { icons[$0.app] ?? icons["Default"] ?? "" }.joined(separator: " ")
+        }
         let emphasis: Pill.Emphasis = workspace.focused ? .focused : workspace.shown ? .shown : .hidden
-        rows[uuid]?.pills.append(Pill(name: workspace.name, glyphs: glyphs.joined(separator: " "), emphasis: emphasis))
+        rows[uuid]?.pills.append(Pill(name: workspace.name, glyphs: glyphs(hidden: false),
+                                      hiddenGlyphs: glyphs(hidden: true), emphasis: emphasis))
         if workspace.focused { rows[uuid]?.frontApp = state.focused?.app ?? "Desktop" }
     }
     return rows

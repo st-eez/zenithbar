@@ -257,11 +257,15 @@ import ZenithBarKit
             NSAttributedString(string: pill.name, attributes: [.font: barFont(14, bold: pill.emphasis == .focused),
                                                                .foregroundColor: color.nsColor])
         }
-        if !pill.glyphs.isEmpty {
-            text = joined(text, NSAttributedString(string: pill.glyphs, attributes: [
-                .font: NSFont(name: "sketchybar-app-font", size: 14) ?? barFont(14), .foregroundColor: color.nsColor,
-            ]), gap: 8, centered: true)
+        let font = NSFont(name: "sketchybar-app-font", size: 14) ?? barFont(14)
+        let glyphs = NSMutableAttributedString(string: pill.glyphs, attributes: [.font: font, .foregroundColor: color.nsColor])
+        if !pill.hiddenGlyphs.isEmpty {
+            if glyphs.length > 0 { glyphs.append(NSAttributedString(string: " ", attributes: [.font: font])) }
+            glyphs.append(NSAttributedString(string: pill.hiddenGlyphs, attributes: [
+                .font: font, .foregroundColor: color.with(alpha: color.alpha / 2).nsColor,
+            ]))
         }
+        if glyphs.length > 0 { text = joined(text, glyphs, gap: 8, centered: true) }
         return (key, Item(content: .text(text)))
     }
 

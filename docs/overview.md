@@ -171,7 +171,10 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   one of them, and config.json's `workspaceIcons` can give it a glyph in place of its name, as
   `{"agent": "\U000F06A9"}`, Material's robot, a number's width (Steve, 2026-10-08). Focus
   still shows by color alone, which a color or background on the agent workspace would have
-  hidden. A glyph past U+FFFF is a surrogate pair in a string, so `joined` kerns its whole
+  hidden. A window hidden with its app (Command-H) keeps its glyph after the windows shown, at
+  half its pill's alpha, as Kosmos's snapshot flags it `hidden` (Steve, 2026-10-14); before,
+  Kosmos left it out and a workspace of hidden apps read as empty. A glyph past U+FFFF is a
+  surrogate pair in a string, so `joined` kerns its whole
   last character: on its second half the pair split and drew as two boxes.
 - **Look:** the fonts, sizes, paddings and colors of Steve's SketchyBar config of
   2026-10-06, and its app glyph map, copied into `AppIcons.swift`. Colors come from
