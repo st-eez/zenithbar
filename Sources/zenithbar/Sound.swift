@@ -64,9 +64,6 @@ import ZenithBarKit
     /// Reads every device again, listens to what the new state needs and drops what it no longer
     /// does, as when a device goes or the default changes, and tells the bar when anything changed.
     func read() {
-        // Timed from the read's start: reading a headset that just connected took about 2 s on
-        // 2026-10-09, which pushed its microphone past MicKeeper's window (docs/sound.md, section 10).
-        let readAt = ProcessInfo.processInfo.systemUptime
         let next = Self.readState()
         let wanted = soundWatches(next)
         // After coreaudiod restarts, every listener is dropped and added again: Apple's header
@@ -97,7 +94,7 @@ import ZenithBarKit
         }
         watches = wanted
         lookUpBluetooth(next)
-        if preferBuiltInMic { keep(next, at: readAt) }
+        if preferBuiltInMic { keep(next) }
         guard next != state else { return }
         state = next
         changed()
@@ -105,17 +102,17 @@ import ZenithBarKit
 
     /// preferBuiltInMic (`MicKeeper`): the switch comes back through the listener as a default
     /// that is not Bluetooth, so no write echoes.
-    private func keep(_ next: SoundState, at now: TimeInterval) {
-        switch keeper.check(next, now: now) {
+    private func keep(_ next: SoundState) {
+        switch keeper.check(next, now: ProcessInfo.processInfo.systemUptime) {
         case let .switchBack(builtIn, headset, first)?:
             let why = first ? "\(headset.name) was the default input \(keeperStart)"
-                : "macOS moved the default output and input to \(headset.name)"
+                : "\(headset.name) became the default input"
             setDefault(builtIn.id, .input, because: "preferBuiltInMic, as \(why)")
-        case let .leave(headset, fighting)?:
-            let why = fighting
-                ? "macOS made it the default input again after \(MicKeeper.fightLimit) switches in \(Int(MicKeeper.fightWindow)) s"
-                : "it became the default input with no output moving to it, as a pick in System Settings does"
-            log.notice("Sound: preferBuiltInMic leaves \(self.describe(headset.id), privacy: .public) until it disconnects, as \(why, privacy: .public)")
+        case let .leave(headset)?:
+            log.notice("""
+                Sound: preferBuiltInMic leaves \(self.describe(headset.id), privacy: .public) until it disconnects, \
+                as it became the default input again after \(MicKeeper.fightLimit) switches in \(Int(MicKeeper.fightWindow)) s
+                """)
         case nil: break
         }
     }
@@ -249,10 +246,6 @@ import ZenithBarKit
     /// Every device and the defaults, about 1.4 ms for Steve's five devices (docs/sound.md).
     private static func readState() -> SoundState {
         let system = AudioObjectID(kAudioObjectSystemObject)
-        // The defaults first, so `read`'s start dates them even when reading a device that just
-        // connected is slow (MicKeeper).
-        let defaultOutput = value(system, kAudioHardwarePropertyDefaultOutputDevice, AudioObjectID(0))
-        let defaultInput = value(system, kAudioHardwarePropertyDefaultInputDevice, AudioObjectID(0))
         let ids = array(system, kAudioHardwarePropertyDevices, AudioObjectID(0))
         let devices = ids.map { id in
             AudioDevice(id: id, uid: string(id, kAudioDevicePropertyDeviceUID) ?? "",
@@ -261,7 +254,9 @@ import ZenithBarKit
                         running: (value(id, kAudioDevicePropertyDeviceIsRunningSomewhere, UInt32(0)) ?? 0) != 0,
                         output: side(id, .output), input: side(id, .input))
         }
-        return SoundState(devices: devices, defaultOutput: defaultOutput, defaultInput: defaultInput)
+        return SoundState(devices: devices,
+                          defaultOutput: value(system, kAudioHardwarePropertyDefaultOutputDevice, AudioObjectID(0)),
+                          defaultInput: value(system, kAudioHardwarePropertyDefaultInputDevice, AudioObjectID(0)))
     }
 
     /// Nil for a direction without streams.

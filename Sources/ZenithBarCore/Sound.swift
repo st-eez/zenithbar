@@ -221,18 +221,15 @@ public struct MuteSwitch: Sendable {
     }
 }
 
-/// Moves the default input back to the built-in microphone whenever macOS makes a Bluetooth
-/// headset's microphone the default, as opening it drops the headset into the call profile, at
-/// 24 kHz, and leaves a headset microphone Steve picked (docs/sound.md, preferBuiltInMic).
-/// macOS's routes, on connecting, returning to the ear and after coreaudiod restarted, moved the
-/// default output to the headset 5 to 50 ms before the input in coreaudiod's log on 2026-10-07;
-/// a pick in System Settings' Input list moves the input alone.
+/// Moves the default input back to the built-in microphone whenever a Bluetooth headset's
+/// microphone becomes the default, as opening it drops the headset into the call profile, and
+/// leaves one Steve picked in the panel (docs/sound.md, preferBuiltInMic). Whoever else made it
+/// the default is not told apart: macOS moves the input alone when an AirPod goes back in the
+/// ear, as a pick in System Settings does, and the `transient` mark coreaudiod logs on both is
+/// in no CoreAudio property.
 public struct MicKeeper: Sendable {
-    /// How long after the default output moves to a headset its microphone becoming the default
-    /// still counts as macOS's route.
-    public static let routeWindow: TimeInterval = 2
     /// Switches away from one headset within `fightWindow` before ZenithBar stops and leaves it,
-    /// as macOS putting it back each time.
+    /// as macOS, or Steve in System Settings, putting it back each time.
     public static let fightLimit = 3
     public static let fightWindow: TimeInterval = 60
 
@@ -241,29 +238,19 @@ public struct MicKeeper: Sendable {
         /// default at the first check, as at launch, after coreaudiod restarted, or when the
         /// setting turned on.
         case switchBack(builtIn: AudioDevice, headset: AudioDevice, first: Bool)
-        /// Leave `headset`'s microphone the default until it disconnects: it became the default
-        /// with no output moving to it, as a pick in System Settings does, or, `fighting`, macOS
-        /// put it back `fightLimit` times.
-        case leave(headset: AudioDevice, fighting: Bool)
+        /// Leave `headset`'s microphone the default until it disconnects, as it was put back
+        /// `fightLimit` times.
+        case leave(headset: AudioDevice)
     }
 
     private var started = false
     /// The default input's UID at the last check, or the built-in microphone's after a switch, so
-    /// macOS putting the headset back before the next read still reads as a change.
+    /// the headset put back before the next read still reads as a change.
     private var input: String?
-    /// The default output's and input's IDs at the last check, and when each took its value. A
-    /// move is dated by the ID's change, not by when the device reads fully: on 2026-10-09
-    /// coreaudiod made the AirPods the default output at 19:42:21.852 and logged their output
-    /// streams only at 23.765, and a device without streams in a direction reads as no default.
-    private var output: (id: AudioObjectID?, since: TimeInterval)?
-    private var inputID: (id: AudioObjectID?, since: TimeInterval)?
     /// Headset microphones that stay the default until they disconnect.
     private var kept: Set<String> = []
     /// When ZenithBar switched away from each headset microphone.
     private var switches: [String: [TimeInterval]] = [:]
-
-    /// How long a headset microphone's decision waits for an unlisted default output to list.
-    public static let listWait: TimeInterval = 10
 
     public init() {}
 
@@ -273,8 +260,6 @@ public struct MicKeeper: Sendable {
         let listed = Set(state.devices(.input).map(\.uid))
         kept.formIntersection(listed)
         switches = switches.filter { listed.contains($0.key) }
-        if output == nil || output?.id != state.defaultOutput { output = (state.defaultOutput, now) }
-        if inputID == nil || inputID?.id != state.defaultInput { inputID = (state.defaultInput, now) }
         let first = !started, previous = input
         started = true
         let current = state.defaultDevice(.input)
@@ -283,43 +268,20 @@ public struct MicKeeper: Sendable {
             input = current?.uid
             return nil
         }
-        if !first {
-            let seen = inputID?.since ?? now, movedAt = output?.since ?? now
-            // By ID, whatever its streams: `defaultDevice(.output)` needs streams, and the AirPods
-            // had none yet on 2026-10-09, so their microphone read as a pick (docs/sound.md, 10).
-            guard let moved = state.devices.first(where: { $0.id == state.defaultOutput }) else {
-                // Named the default before CoreAudio lists it: decide once it lists, leaving
-                // `input` unrecorded so the next read sees the change again.
-                if now - seen < Self.listWait, (0...Self.routeWindow).contains(seen - movedAt) { return nil }
-                return leave(headset)
-            }
-            guard moved.transport == .bluetooth, Self.headset(moved) == Self.headset(headset),
-                  (0...Self.routeWindow).contains(seen - movedAt) else { return leave(headset) }
-        }
         let recent = (switches[headset.uid] ?? []).filter { now - $0 < Self.fightWindow }
         guard recent.count < Self.fightLimit else {
             input = headset.uid
             kept.insert(headset.uid)
-            return .leave(headset: headset, fighting: true)
+            return .leave(headset: headset)
         }
         switches[headset.uid] = recent + [now]
         input = builtIn.uid
         return .switchBack(builtIn: builtIn, headset: headset, first: first)
     }
 
-    private mutating func leave(_ headset: AudioDevice) -> Decision {
-        input = headset.uid
-        kept.insert(headset.uid)
-        return .leave(headset: headset, fighting: false)
-    }
-
     /// Steve picked `uid` as the default input in the panel: a headset's microphone stays until it
     /// disconnects, and picking another ends that.
     public mutating func chose(_ uid: String) { kept = [uid] }
-
-    /// A headset's output and input share its Bluetooth address, as `7C-1A-2B-3C-4D-03:output`
-    /// and `:input`.
-    private static func headset(_ device: AudioDevice) -> String { bluetoothAddress(uid: device.uid) ?? device.name }
 }
 
 extension SoundState {

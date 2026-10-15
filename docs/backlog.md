@@ -35,8 +35,7 @@
   Check `preferBuiltInMic` ([sound.md](sound.md), section 10): on connecting, back in the ear,
   and back from the iPhone, the default input goes back to the MacBook Pro Microphone with the
   output left on the AirPods and the log names the switch; the AirPods' microphone picked in the
-  panel or in System Settings' Input list stays. Pick the AirPods as the output in Control
-  Center and record whether macOS moves the input too, which ZenithBar would switch back.
+  panel stays.
 - Confirm ZenithBar's answer to coreaudiod restarting ([sound.md](sound.md), section 11) the
   next time coreaudiod restarts on its own, never by restarting it: the log line
   `Sound: coreaudiod restarted`, the sound panel following F11 and F12 after, and no listener

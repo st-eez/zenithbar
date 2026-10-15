@@ -227,10 +227,15 @@ private func switched(_ decision: MicKeeper.Decision?, first: Bool = false) -> B
     #expect(keeper.check(connected, now: 1) == nil)
     #expect(switched(keeper.check(routed, now: 2)))
     #expect(keeper.check(kept, now: 2.1) == nil)
-    keeper = MicKeeper()
-    #expect(keeper.check(connected, now: 0) == nil)
-    #expect(keeper.check(kept, now: 1) == nil)
-    #expect(switched(keeper.check(routed, now: 1.01)))
+    // Their microphone, the default input with no input streams yet: switched once they appear.
+    var silentMic = airpodsInput
+    silentMic.input = nil
+    #expect(keeper.check(SoundState(devices: connected.devices.dropLast() + [silentMic], defaultOutput: 120,
+                                    defaultInput: 121), now: 10) == nil)
+    #expect(switched(keeper.check(routed, now: 12)))
+    // The input moving with the output still on the MacBook.
+    #expect(keeper.check(kept, now: 13) == nil)
+    #expect(switched(keeper.check(SoundState(devices: connected.devices, defaultOutput: 82, defaultInput: 121), now: 14)))
     // Back in the ear without disconnecting, as at 21:01:08: the output leaves and comes back
     // with the input, and the AirPods never leave the device list.
     #expect(keeper.check(connected, now: 30) == nil)
@@ -276,15 +281,10 @@ private func switched(_ decision: MicKeeper.Decision?, first: Bool = false) -> B
     #expect(keeper.check(kept, now: 40) == nil)
     #expect(keeper.check(connected, now: 50) == nil)
     #expect(switched(keeper.check(routed, now: 60)))
-    // Picked in System Settings' Input list: the input moves alone, and it stays until they
-    // disconnect.
+    // Picked anywhere else, or put back alone by macOS as an AirPod returns to the ear, as on
+    // 2026-10-10 and 2026-10-14: the input moves alone, and it is switched back.
     #expect(keeper.check(kept, now: 61) == nil)
-    #expect(keeper.check(routed, now: 120) == .leave(headset: airpodsInput, fighting: false))
-    #expect(keeper.check(routed, now: 121) == nil)
-    #expect(keeper.check(connected, now: 130) == nil)
-    #expect(keeper.check(routed, now: 140) == nil)
-    #expect(keeper.check(steve, now: 150) == nil)
-    #expect(switched(keeper.check(routed, now: 160)))
+    #expect(switched(keeper.check(routed, now: 120)))
 }
 
 @Test func preferBuiltInMicBacksOffWhenMacOSKeepsPuttingTheHeadsetBack() {
@@ -294,10 +294,20 @@ private func switched(_ decision: MicKeeper.Decision?, first: Bool = false) -> B
     #expect(switched(keeper.check(routed, now: 1)))
     #expect(switched(keeper.check(routed, now: 1.1)))
     #expect(switched(keeper.check(routed, now: 1.2)))
-    #expect(keeper.check(routed, now: 1.3) == .leave(headset: airpodsInput, fighting: true))
+    #expect(keeper.check(routed, now: 1.3) == .leave(headset: airpodsInput))
     #expect(keeper.check(routed, now: 1.4) == nil)
     #expect(keeper.check(connected, now: 5) == nil)
     #expect(keeper.check(routed, now: 6) == nil)
+    // A fight that alternates the input's ID backs off the same way.
+    keeper = MicKeeper()
+    #expect(keeper.check(connected, now: 0) == nil)
+    #expect(switched(keeper.check(routed, now: 1)))
+    #expect(keeper.check(kept, now: 1.2) == nil)
+    #expect(switched(keeper.check(routed, now: 1.5)))
+    #expect(keeper.check(kept, now: 1.7) == nil)
+    #expect(switched(keeper.check(routed, now: 30)))
+    #expect(keeper.check(kept, now: 31) == nil)
+    #expect(keeper.check(routed, now: 40) == .leave(headset: airpodsInput))
     // A minute later, after they disconnect, it switches again.
     #expect(keeper.check(steve, now: 100) == nil)
     #expect(switched(keeper.check(routed, now: 101)))
@@ -399,58 +409,4 @@ private func switched(_ decision: MicKeeper.Decision?, first: Bool = false) -> B
     #expect(teamsDefault.listed(.output).map(\.id) == [94, 82, 68])
     #expect(teamsDefault.listed(.input).map(\.id) == [89, 68])
     #expect(AudioTransport(code: kAudioDeviceTransportTypeVirtual) == .virtual)
-}
-
-@Test func preferBuiltInMicWaitsForAnOutputCoreAudioHasNotReadFully() {
-    // AirPods that are the default output before their output streams appear, as on 2026-10-09:
-    // still macOS's route.
-    var keeper = MicKeeper()
-    var streamless = airpods
-    streamless.output = nil
-    let early = SoundState(devices: steve.devices + [streamless, airpodsInput], defaultOutput: 82, defaultInput: 89)
-    #expect(keeper.check(early, now: 0) == nil)
-    #expect(switched(keeper.check(SoundState(devices: early.devices, defaultOutput: 120, defaultInput: 121), now: 0.5)))
-    // Or named the default output before CoreAudio lists them, with their microphone the default:
-    // the decision waits for the list, and the moves date from the IDs' changes, so it is still
-    // macOS's route 3 s later.
-    keeper = MicKeeper()
-    let unlisted = SoundState(devices: steve.devices + [airpodsInput], defaultOutput: 120, defaultInput: 121)
-    #expect(keeper.check(steve, now: 0) == nil)
-    #expect(keeper.check(unlisted, now: 1) == nil)
-    #expect(keeper.check(unlisted, now: 2) == nil)
-    #expect(switched(keeper.check(SoundState(devices: unlisted.devices + [streamless], defaultOutput: 120,
-                                             defaultInput: 121), now: 4)))
-    // Or their microphone, the default input with no input streams yet, reads 2.2 s after the
-    // output moved: the input dates from its ID's change, so it is still macOS's route.
-    keeper = MicKeeper()
-    var silentMic = airpodsInput
-    silentMic.input = nil
-    #expect(keeper.check(steve, now: 0) == nil)
-    #expect(keeper.check(SoundState(devices: steve.devices + [streamless, silentMic], defaultOutput: 120,
-                                    defaultInput: 121), now: 0.01) == nil)
-    #expect(switched(keeper.check(routed, now: 2.2)))
-    // A pick in System Settings long after the output moved still stands.
-    #expect(keeper.check(kept, now: 3) == nil)
-    keeper = MicKeeper()
-    #expect(keeper.check(kept, now: 0) == nil)
-    #expect(keeper.check(routed, now: 30) == .leave(headset: airpodsInput, fighting: false))
-    // macOS putting the microphone back after each switch, as a real fight alternates the input's
-    // ID: switched while within 2 s of the output's move, then left as a pick.
-    keeper = MicKeeper()
-    #expect(keeper.check(connected, now: 0) == nil)
-    #expect(switched(keeper.check(routed, now: 1)))
-    #expect(keeper.check(kept, now: 1.2) == nil)
-    #expect(switched(keeper.check(routed, now: 1.5)))
-    #expect(keeper.check(kept, now: 1.7) == nil)
-    #expect(keeper.check(routed, now: 3.5) == .leave(headset: airpodsInput, fighting: false))
-    // macOS moves the output first; an input that moves before it is a pick.
-    keeper = MicKeeper()
-    #expect(keeper.check(steve, now: 0) == nil)
-    #expect(keeper.check(SoundState(devices: connected.devices, defaultOutput: 82, defaultInput: 121), now: 1)
-            == .leave(headset: airpodsInput, fighting: false))
-    // An output that never lists within `listWait` leaves the microphone.
-    keeper = MicKeeper()
-    #expect(keeper.check(steve, now: 0) == nil)
-    #expect(keeper.check(unlisted, now: 1) == nil)
-    #expect(keeper.check(unlisted, now: 1 + MicKeeper.listWait) == .leave(headset: airpodsInput, fighting: false))
 }
