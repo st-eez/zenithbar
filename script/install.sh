@@ -82,6 +82,11 @@ cat > "$plist" <<EOF
 <dict>
     <key>Label</key>
     <string>$label</string>
+    <!-- Login Items names the job ZenithBar by this, not the certificate's developer name. -->
+    <key>AssociatedBundleIdentifiers</key>
+    <array>
+        <string>$label</string>
+    </array>
     <key>ProgramArguments</key>
     <array>
         <string>$binary</string>

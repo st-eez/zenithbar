@@ -208,7 +208,10 @@ On Steve's M3 Pro, macOS 27.0, 2026-10-06, with SketchyBar stopped for ZenithBar
   Development certificate as Kosmos's bundle is, and runs its binary from the LaunchAgent
   `io.github.st-eez.zenithbar`, which starts it at login and again when it crashes or exits
   with an error (`KeepAlive`'s `SuccessfulExit` false), at most every 10 s, launchd's default;
-  errors go to `~/Library/Logs/zenithbar.log`. A bundle, as
+  errors go to `~/Library/Logs/zenithbar.log`. Its `AssociatedBundleIdentifiers` names the app, so
+  Login Items lists it as ZenithBar rather than the certificate's developer name. A job registered
+  before the key keeps that name until macOS forgets it: with the job unloaded and its plist moved
+  out, its background-items cleanup dropped it within a minute on 2026-11-16. A bundle, as
   Location Services asked nothing of the bare `~/.local/bin/zenithbar` earlier installs ran,
   which the install removes ([network.md](network.md), section 3). Location Services' grant
   survived two reinstalls on 2026-10-07: ZenithBar logs its answer at launch. The build is signed in
